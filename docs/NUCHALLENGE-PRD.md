@@ -2,9 +2,9 @@
 
 ## Comprehensive Product Requirements Document (PRD)
 
-**Version:** 2.0
-**Date:** March 29, 2026
-**Status:** Final Draft — Ready for Engineering
+**Version:** 2.1 (CEO-Reviewed)
+**Date:** March 30, 2026
+**Status:** Final Draft — Ready for Design Phase
 **Codename:** NuChallenge
 **Parent Project:** Mission Marketplace (Operon Whitepaper)
 
@@ -58,7 +58,7 @@ Nubank has invested in AI tooling (GitHub Copilot, internal LLM access, analytic
 - Less than 5% successful cheating rate on medium+ challenges (measured via statistical analysis of submission patterns)
 
 **Secondary KPIs:**
-- Time-to-first-challenge-completion under 25 minutes for beginners
+- Time-to-first-challenge-completion under 10 minutes for beginners
 - 40% of employees progress beyond beginner track within 60 days
 - Net Promoter Score for the platform above 40
 - 90% uptime for evaluation services
@@ -67,6 +67,39 @@ Nubank has invested in AI tooling (GitHub Copilot, internal LLM access, analytic
 - Measurable increase in AI tool usage across the organization (Copilot acceptance rates, LLM API usage per employee)
 - Reduction in "AI support tickets" as employees self-serve through challenge-learned skills
 - Manager-reported improvement in AI-assisted work quality
+
+### 1.6 Business Impact Hypothesis
+
+Platform metrics alone don't justify the investment. NuChallenge must demonstrate measurable business outcomes:
+
+**Hypothesis 1: AI Tool Productivity**
+- Teams with >80% NuChallenge completion show ≥15% higher GitHub Copilot acceptance rates within 60 days of completion
+- Departments completing the "Think & Analyze" path reduce ad-hoc data request tickets by ≥20% within one quarter
+- Measurement: Compare Copilot telemetry and Jira ticket volume for NuChallenge-active vs. control groups
+
+**Hypothesis 2: Onboarding Velocity**
+- New hires who complete the beginner path reach "independently productive with AI tools" (manager-assessed) 2 weeks faster than the pre-NuChallenge baseline
+- Measurement: Manager survey at 30/60/90 day marks, compared to historical cohorts
+
+**Hypothesis 3: Work Quality**
+- AI-assisted deliverables (PRDs, code reviews, data analyses) from NuChallenge completers score ≥10% higher on peer review quality rubrics vs. non-completers
+- Measurement: Blind peer review of work samples from matched cohorts
+
+**Hypothesis 4: Support Cost Reduction**
+- Internal AI tool support tickets decrease by ≥30% within 6 months of platform-wide rollout
+- Measurement: ServiceNow/Jira ticket volume tagged "AI tools"
+
+**Validation plan:** Each hypothesis has a 90-day measurement window post-Phase 1 launch. Results inform Phase 2 scope and budget.
+
+### 1.7 Multi-Tenancy Potential
+
+While NuChallenge is built for Nubank, the challenge design, tag taxonomy, and evaluation engine are industry-agnostic. The architecture should support multi-tenancy from Phase 2 onward:
+- Tenant-scoped data isolation (schema-per-tenant or row-level security)
+- Configurable challenge catalogs per tenant
+- White-label theming capability
+- Potential outcomes: open-source release for thought leadership, or SaaS product for enterprise AI upskilling
+
+This is a strategic option, not a Phase 1 requirement. The architectural decisions should not preclude it.
 
 ---
 
@@ -840,14 +873,10 @@ Locked challenges show their prerequisite chain clearly, with direct links to th
 
 ---
 
-### Critical Files for Implementation
+### Related Documents
 
-Based on the codebase exploration, the NuChallenge PRD does not yet exist as a standalone file in the repository. The implementation of this redesign would need to create or modify these critical files:
-
-- `/Users/jardel/Library/Mobile Documents/com~apple~CloudDocs/Dev/Operon/mission_marketplace_whitepaper/docs/superpowers/specs/2026-03-28-mission-marketplace-mvp-design.md` -- The existing MVP design spec that established architectural patterns for the Operon project. The tag-based challenge system should follow the same data modeling conventions.
-- `/Users/jardel/Library/Mobile Documents/com~apple~CloudDocs/Dev/Operon/mission-marketplace-mvp/docs/MVP-PRODUCT-DOCUMENT.md` -- The MVP product document that defines the type system and data models. The Challenge type, Tag type, and SkillPath type would need to be added here or in a companion document.
-- `/Users/jardel/Library/Mobile Documents/com~apple~CloudDocs/Dev/Operon/mission_marketplace_whitepaper/04_design.md` -- The whitepaper's marketplace design chapter, which establishes the theoretical framework for task categorization and matching. The tag taxonomy should align with concepts defined here.
-- `/Users/jardel/Library/Mobile Documents/com~apple~CloudDocs/Dev/Operon/mission_marketplace_whitepaper/02_reputation.md` -- The reputation and incentives chapter, relevant because the tag affinity profile and badge system extend the reputation model defined in this document.
+- **Mission Marketplace Whitepaper** — Theoretical framework for task categorization, reputation, and incentive design. NuChallenge's tag taxonomy and point model are adapted from the whitepaper.
+- **Mission Marketplace MVP** — Sibling project that validated the marketplace UI patterns. NuChallenge follows the same data modeling conventions and Tailwind design system.
 
 ### 4.2 Suggested Skill Paths
 
@@ -991,26 +1020,33 @@ Where:
 
 | Level | Name | Points Threshold | Unlocks |
 |-------|------|-----------------|---------|
-| 1 | Novice | 0 | Beginner challenges only |
-| 2 | Contributor | 500 | Intermediate challenges, can access Cross-Functional track |
-| 3 | Expert | 2,000 | Advanced challenges, can participate in peer review (XF-02, XF-04) |
-| 4 | Master | 5,000 | Expert challenges, can become an evaluator |
+| 1 | Novice | 0 | All challenges accessible (warnings shown for advanced/expert) |
+| 2 | Contributor | 500 | Warning badges removed for intermediate, can participate in peer challenges |
+| 3 | Expert | 2,000 | Warning badges removed for advanced, can become peer evaluator |
+| 4 | Master | 5,000 | Warning badges removed for expert, can become an evaluator |
 | 5 | Architect | 10,000 | Can propose new challenges (Builder role), platform governance |
+
+**Note (CEO feedback):** Levels do NOT gate access to challenges. Any user can attempt any difficulty at any time. Levels only affect: (1) whether a "recommended for Level X+" warning badge is shown, (2) access to platform roles (evaluator, builder). This aligns with the tag-based philosophy — the user decides what is valuable to them, not the system. Prerequisites (asset-chaining) remain the only hard gate.
 
 ### 5.3 Badges and Achievements
 
-**Track Completion Badges** (5):
-- PM Champion, BA Champion, Dev Champion, Design Champion, Manager Champion -- complete all challenges in a track
+**Path Completion Badges** (6):
+- AI Prompt Master -- complete all challenges in the "AI Prompt Mastery" path
+- Code & Ship Champion -- complete all challenges in the "Code & Ship" path
+- Think & Analyze Champion -- complete all challenges in the "Think & Analyze" path
+- Lead & Communicate Champion -- complete all challenges in the "Lead & Communicate" path
+- Design & Research Champion -- complete all challenges in the "Design & Research" path
+- The Completionist -- complete all 50 challenges
 
 **Skill Badges** (8):
-- Prompt Engineer (complete 5 challenges scoring 90%+ on prompt-based tasks)
+- Prompt Engineer (complete 5 challenges scoring 90%+ on prompt-tagged challenges)
 - Bug Hunter (find all planted errors in 3+ review challenges)
 - Speed Demon (complete 5 challenges 25%+ faster than median)
 - Perfectionist (score 95%+ on 5 challenges)
-- Collaborator (complete XF-02 and XF-04 with 4+ peer ratings)
-- Polymath (complete challenges in 3+ tracks)
-- Mentor (have your XF-04 teaching guide rated 4+ by follower)
-- Meta-contributor (have XF-05 proposal accepted for implementation)
+- Collaborator (complete CH-47 with 4+ peer ratings)
+- Tag Explorer (complete challenges with 10+ different tags)
+- Mentor (have your CH-49 teaching guide rated 4+ by follower)
+- Meta-contributor (have CH-50 proposal accepted for implementation)
 
 **Streak Badges** (3):
 - 3-Day Streak (complete a challenge 3 consecutive days)
@@ -1020,7 +1056,7 @@ Where:
 ### 5.4 Leaderboard Design
 
 Three leaderboard views:
-1. **Overall** -- total points across all tracks
+1. **Overall** -- total points across all challenges
 2. **By Tag** -- points within skill tag categories
 3. **By Team** -- aggregate team performance (encourages managers to support participation)
 
@@ -1098,42 +1134,27 @@ Okta groups map to NuChallenge roles:
 
 ### 7.1 System Architecture
 
+**Phase 1 (MVP): Next.js Full-Stack**
+
+Per CEO review, Phase 1 ships as a Next.js full-stack application (Route Handlers → PostgreSQL directly). No separate Clojure services layer. This reduces complexity and time-to-ship. Clojure services are extracted in Phase 2+ as scale demands.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        CLIENT LAYER                                  │
 │  Next.js App (React 19, TypeScript, Tailwind)                       │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐              │
-│  │Challenge │ │Portfolio │ │Leader-   │ │Admin     │              │
+│  │Challenge │ │Portfolio │ │Leader-   │ │Manager   │              │
 │  │Explorer  │ │/Profile  │ │board     │ │Dashboard │              │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘              │
 └─────────────────────────────────────────────────────────────────────┘
                               │
-                     Next.js Route Handlers (BFF)
+                     Next.js Route Handlers
                      /api/challenges/*
                      /api/submissions/*
                      /api/users/*
                      /api/admin/*
                      /api/auth/*
-                              │
-┌─────────────────────────────────────────────────────────────────────┐
-│                    CLOJURE SERVICES LAYER                            │
-│                                                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │ Challenge    │  │ Submission   │  │ User         │              │
-│  │ Service      │  │ Service      │  │ Service      │              │
-│  │ - catalog    │  │ - submit     │  │ - profile    │              │
-│  │ - unlock     │  │ - evaluate   │  │ - points     │              │
-│  │ - progress   │  │ - retry      │  │ - reputation │              │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
-│         │                  │                  │                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │ Evaluation   │  │ Sandbox      │  │ Gamification │              │
-│  │ Service      │  │ Service      │  │ Service      │              │
-│  │ - AI judge   │  │ - code exec  │  │ - badges     │              │
-│  │ - test run   │  │ - SQL exec   │  │ - streaks    │              │
-│  │ - human Q    │  │ - timeout    │  │ - leaderboard│              │
-│  └──────────────┘  └──────────────┘  └──────────────┘              │
-└─────────────────────────────────────────────────────────────────────┘
+                     /api/slack/* (webhooks)
                               │
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       DATA LAYER                                     │
@@ -1145,7 +1166,24 @@ Okta groups map to NuChallenge roles:
 │  │ - points     │  │ - streaks    │  │              │              │
 │  └──────────────┘  └──────────────┘  └──────────────┘              │
 └─────────────────────────────────────────────────────────────────────┘
+                              │
+                     External Services
+                     ┌──────────────┐  ┌──────────────┐
+                     │ Claude API   │  │ Slack API    │
+                     │ (AI Judge)   │  │ (Notifs)     │
+                     └──────────────┘  └──────────────┘
 ```
+
+**Phase 2+: Extract Clojure Services**
+
+As traffic and complexity grow, business logic migrates to dedicated Clojure services:
+
+```
+Next.js BFF → Clojure Services (Challenge, Submission, User, Evaluation,
+                                  Sandbox, Gamification) → PostgreSQL
+```
+
+The Route Handler layer becomes a thin BFF that delegates to Clojure services via HTTP/gRPC. This migration is transparent to the frontend.
 
 ### 7.2 Database Choice: PostgreSQL over Datomic
 
@@ -1190,7 +1228,7 @@ users (
 
 -- Challenges (the 50 challenge definitions)
 challenges (
-  id TEXT PK, -- 'PM-01', 'DEV-05', etc.
+  id TEXT PK, -- 'CH-01', 'CH-50', etc.
   title TEXT NOT NULL,
   tags TEXT[] NOT NULL, -- skill tags like 'coding', 'strategy', 'data-analysis'
   difficulty TEXT NOT NULL, -- 'beginner', 'intermediate', 'advanced', 'expert'
@@ -1440,9 +1478,31 @@ export function middleware(request: NextRequest) {
 - **Progressive disclosure**: Challenge instructions are revealed in sections as the user scrolls, preventing overwhelm.
 - **Autosave**: Submission drafts are saved every 30 seconds. Users can leave and return.
 - **Timer**: Non-punitive. Shows elapsed time for personal awareness but does not auto-submit. Speed bonus is calculated but no hard cutoff.
-- **Hint system**: Each challenge has 3 hints, progressively more specific. Hints encourage using AI tools creatively, not giving answers. Example hint for PM-05: "Try asking an AI to fact-check the revenue figures against public financial reports." Using hints does not reduce points.
+- **Hint system**: Each challenge has 3 hints, progressively more specific. Hints encourage using AI tools creatively, not giving answers. Example hint for CH-05: "Try asking an AI to fact-check the revenue figures against public financial reports." Using hints does not reduce points. Hint content is authored alongside each challenge (see Section 9.1: Content Authoring Workflow).
 
-### 8.4 Mobile Considerations
+### 8.4 Slack Integration (Phase 1)
+
+Slack is Nubank's nervous system. NuChallenge integrates from day 1:
+
+- **Challenge completion notifications**: When a user completes a challenge, a message posts to a configurable team channel: *"🎯 Sofia completed CH-05: Spot the Hallucination (Score: 87/100) — 200 points earned!"*
+- **Weekly digest**: Monday morning summary to team channels: team completion stats, new challenges available, leaderboard highlights
+- **Manager nudges**: Opt-in DMs to managers when team members haven't started onboarding challenges after 5 days
+- **Badge announcements**: Special badge earnings post to a shared #nuchallenge channel
+- **Configuration**: Per-team channel mapping in admin settings. Users can opt out of personal notifications.
+
+Social proof is the strongest adoption driver. Making progress visible in Slack transforms NuChallenge from "homework" to "thing everyone is doing."
+
+### 8.5 Manager Dashboard (Phase 1)
+
+A lightweight dashboard for managers, not an admin surveillance tool:
+
+- **Team progress overview**: X of Y reports have started onboarding challenges. Completion rates by challenge.
+- **Skill tag heatmap**: Which tags the team has covered vs. gaps
+- **No individual scoring visibility**: Managers see completion status (started/completed), not individual scores. Scores are private to the challenger.
+- **Coaching prompts**: "3 team members haven't started yet — send a Slack nudge?" with one-click action
+- **ROI preview**: Average time-to-completion for the team, compared to org benchmark
+
+### 8.6 Mobile Considerations
 
 - Responsive layout that stacks sidebar below content on mobile
 - Code editor falls back to textarea on mobile (Monaco is desktop-only)
@@ -1456,61 +1516,80 @@ export function middleware(request: NextRequest) {
 
 ## SECTION 9: Implementation Roadmap
 
-### Phase 1: MVP (Weeks 1-8)
+### 9.1 Content Authoring Workflow
+
+**The 50-challenge content problem:** Each challenge requires description, instructions, rubric, anti-cheat design, context templates, hints (3 per challenge), and test data. At ~4 hours per challenge, this is 200 hours of content work.
+
+**Content production plan:**
+- **Who:** 1 dedicated content engineer + rotating subject matter experts (1 PM, 1 Dev, 1 Designer, 1 BA, 1 Manager — each contributing 4 hours/week for domain-specific challenges)
+- **Process:** Content engineer drafts → SME reviews → AI-judge test run → rubric calibration → sign-off
+- **Phase 1 cadence:** 15 challenges in 4 weeks (content engineer full-time, SMEs part-time)
+- **Phase 2 cadence:** 35 challenges in 8 weeks (same team, higher throughput after process is established)
+- **Hint authoring:** 3 hints per challenge (150 total). Hints are authored alongside the challenge, not as a separate pass. Each hint must encourage AI tool usage, not give answers.
+- **Quality gate:** Every challenge must pass a "colleague test" — one person who wasn't involved in authoring attempts the challenge cold. If they can't understand the instructions or the rubric feels unfair, the challenge goes back for revision.
+
+### Phase 1: MVP (Weeks 1-10)
 
 **Scope:**
-- 15 challenges (3 per role track, Beginner + Intermediate only)
-- AI-judge evaluation for all 15
+- 15 challenges (selected across tags for diversity: 5 Beginner, 6 Intermediate, 4 Advanced — no role-based selection)
+- AI-judge evaluation (Claude API) for all 15
 - Local authentication (email/password)
-- Challenge explorer, workspace, results, profile, leaderboard
-- Points and level system
+- Challenge explorer with tag filtering, workspace, results, profile, leaderboard
+- Points system (no level gating — levels are cosmetic)
+- **Slack integration** — challenge completion posts to shared channel, configurable per team
+- **Manager dashboard** — lightweight view showing team completion rates and progress
+- First challenge completable in under 10 minutes (optimized onboarding flow)
 - No human review, no sandbox execution, no collaborative challenges
 
-**Engineering Effort:**
-- Next.js BFF: 2 engineers, 4 weeks
-- Clojure services (challenge, submission, user, evaluation): 2 engineers, 6 weeks
-- AI evaluation integration: 1 engineer, 3 weeks
-- Database schema + data seeding: 1 engineer, 2 weeks
-- Frontend (React): 2 engineers, 5 weeks
+**Engineering Effort (Next.js full-stack):**
+- Next.js app + Route Handlers + PostgreSQL: 2 engineers, 6 weeks
+- AI evaluation integration (Claude API): 1 engineer, 3 weeks
+- Frontend (React pages + components): 2 engineers, 6 weeks
+- Slack integration: 1 engineer, 2 weeks
+- Content authoring (15 challenges + rubrics + hints): 1 content engineer, 4 weeks
 
-**Total: ~4 engineers, 8 weeks (with overlap)**
+**Total: ~4 engineers + 1 content engineer, 10 weeks**
 
-### Phase 2: Full Catalog + Code Sandbox (Weeks 9-16)
+### Phase 2: Full Catalog + Code Sandbox + Clojure Extraction (Weeks 11-20)
 
 **Scope:**
 - Remaining 35 challenges (all 50 live)
-- Docker sandbox for Dev track code execution
+- Docker sandbox for code execution challenges
 - Automated test runner for SQL/data challenges
 - Human evaluation queue + evaluator UI
 - Hybrid evaluation pipeline
 - Streak mechanics and badges
 - Appeal system
+- Begin Clojure service extraction (evaluation service first)
+- Multi-tenancy data isolation (schema-per-tenant)
 
 **Engineering Effort:**
 - Sandbox service: 1 engineer, 4 weeks
-- Remaining challenge content + rubrics: 2 content engineers, 6 weeks
+- Remaining challenge content + rubrics: 1 content engineer + SMEs, 8 weeks
 - Human review UI + queue: 1 engineer, 3 weeks
 - Gamification features: 1 engineer, 3 weeks
+- Clojure service extraction: 1 engineer, 4 weeks
 
-**Total: ~3-4 engineers, 8 weeks**
+**Total: ~4 engineers + 1 content engineer, 10 weeks**
 
-### Phase 3: Enterprise Platform (Weeks 17-26)
+### Phase 3: Enterprise Platform (Weeks 21-30)
 
 **Scope:**
 - Okta SSO integration
 - Builder role: challenge creation UI
-- Analytics dashboard for admins
-- Collaborative challenges (XF-02, XF-04) requiring real-time pairing
+- Admin analytics dashboard
+- Collaborative challenges (CH-47) requiring real-time pairing
 - Team leaderboards with department integration
 - Asset chaining verification (automated cross-reference checks)
 - Performance optimization (caching, CDN, read replicas)
+- Complete Clojure services migration
 
 **Engineering Effort:**
 - SSO: 1 engineer, 3 weeks
 - Builder tools: 2 engineers, 5 weeks
 - Analytics: 1 engineer, 4 weeks
 - Collaborative features: 1 engineer, 4 weeks
-- Infrastructure: 1 engineer, ongoing
+- Infrastructure + Clojure migration: 1 engineer, ongoing
 
 **Total: ~4 engineers, 10 weeks**
 
@@ -1518,9 +1597,9 @@ export function middleware(request: NextRequest) {
 
 | Phase | Duration | Cumulative | Challenges Live | Key Milestone |
 |-------|----------|-----------|----------------|---------------|
-| Phase 1 | 8 weeks | Week 8 | 15 | Internal beta with 50 users |
-| Phase 2 | 8 weeks | Week 16 | 50 | Full catalog, open to all employees |
-| Phase 3 | 10 weeks | Week 26 | 50+ (user-created) | Enterprise-grade with SSO and analytics |
+| Phase 1 | 10 weeks | Week 10 | 15 | Internal beta with 50 users, Slack integration live |
+| Phase 2 | 10 weeks | Week 20 | 50 | Full catalog, code sandbox, open to all employees |
+| Phase 3 | 10 weeks | Week 30 | 50+ (user-created) | Enterprise-grade with SSO, analytics, multi-tenancy |
 
 ---
 
@@ -1560,5 +1639,6 @@ export function middleware(request: NextRequest) {
 
 ---
 
-*This PRD was generated on March 29, 2026, for NuChallenge v2.0.*
+*NuChallenge PRD v2.1 — March 30, 2026*
+*CEO-reviewed. Incorporates feedback on business KPIs, Phase 1 architecture simplification, adoption strategy (Slack + manager dashboard), level gating removal, content production plan, and multi-tenancy potential.*
 *Parent project: Mission Marketplace (Operon Whitepaper)*
