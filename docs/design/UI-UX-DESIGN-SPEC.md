@@ -1,9 +1,10 @@
 # NuChallenge UI/UX Design Specification
 
-**Version:** 1.0
+**Version:** 1.2 (PM-reviewed + Design Director-reviewed)
 **Date:** March 30, 2026
 **Role:** Product Designer
 **Input:** PRD v2.1 (CEO-reviewed)
+**Reviews:** PM Review (8 items incorporated), Design Director Review (6 refinements)
 
 ---
 
@@ -37,6 +38,7 @@
 | `--gray-200` | `#E5E7EB` | Borders, dividers |
 | `--gray-50` | `#F9FAFB` | Page background |
 | `--white` | `#FFFFFF` | Card backgrounds |
+| `--fuchsia-500` | `#D946EF` | Celebration-only accent (confetti, badge glow) |
 | `--emerald-500` | `#10B981` | Success, completion |
 | `--emerald-50` | `#ECFDF5` | Success background |
 | `--amber-500` | `#F59E0B` | Warning, in-progress |
@@ -56,9 +58,9 @@
 
 | Role | Font | Size | Weight | Line Height |
 |------|------|------|--------|-------------|
-| Page title | Inter | 28px / 1.75rem | 700 (bold) | 1.3 |
+| Page title | Inter | 32px / 2rem | 800 (extrabold) | 1.3 |
 | Section heading | Inter | 20px / 1.25rem | 600 (semibold) | 1.4 |
-| Card title | Inter | 16px / 1rem | 600 | 1.4 |
+| Card title | Inter | 15px / 0.9375rem | 600 | 1.4 |
 | Body | Inter | 14px / 0.875rem | 400 (regular) | 1.6 |
 | Small / Caption | Inter | 12px / 0.75rem | 500 (medium) | 1.5 |
 | Code | JetBrains Mono | 13px / 0.8125rem | 400 | 1.6 |
@@ -76,6 +78,15 @@
 - Card hover: `0 4px 12px rgba(0,0,0,0.08)`
 - Dropdown: `0 10px 40px rgba(0,0,0,0.12)`
 - Modal: `0 20px 60px rgba(0,0,0,0.15)`
+
+**Design Director additions:**
+- **Brand gradient:** `bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600` — used on login background, header logo, podium, badge reveals. NOT on buttons.
+- **Page background depth:** `bg-gradient-to-b from-white to-gray-50/50` — barely perceptible warmth.
+- **Tabular numbers:** All numeric displays (scores, points, timers, leaderboard) use `font-variant-numeric: tabular-nums` to prevent digit-width shift during animations.
+- **Status strip on cards:** 3px colored left border: amber-400 (in progress), emerald-400 (completed), purple-400 with subtle pulse (recommended), none (available), full opacity-50 (locked).
+- **Celebration accent:** Fuchsia-500 (#D946EF) used exclusively during reward moments (confetti, badge glow, level-up). Never in work UI.
+- **Optional audio cues:** Achievement chime on challenge completion, badge chime on badge earn. Off by default, toggle in profile settings. Sound design: professional, Slack-level subtlety.
+- **Dark mode preparation:** All colors via CSS custom properties. Tailwind `dark:` prefix on components. Illustrations use currentColor or transparent backgrounds.
 
 ### 1.2 Iconography
 
