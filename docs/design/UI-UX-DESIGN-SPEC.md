@@ -691,6 +691,211 @@ All interactive elements ≥ 44px touch target (minimum). Tag pills, buttons, an
 
 ---
 
+## 7. Accessibility Requirements (PM Review Addition)
+
+### 7.1 Color Contrast
+- All text meets WCAG 2.1 AA contrast ratios: 4.5:1 for normal text, 3:1 for large text (18px+ or 14px+ bold)
+- Difficulty badge colors verified against their backgrounds
+- Links distinguishable by more than just color (underline on hover + color change)
+
+### 7.2 Keyboard Navigation
+- All interactive elements reachable via Tab key in logical order
+- Visible focus indicators: 2px purple-600 outline with 2px offset (not the browser default)
+- Skip-to-content link on every page (hidden until focused)
+- Challenge grid navigable with arrow keys once focused
+- Modal focus trap: Tab stays within modal while open, Escape closes
+
+### 7.3 Screen Reader Support
+- All images have meaningful alt text or are aria-hidden if decorative
+- Icons are aria-hidden with accompanying text labels, OR have aria-label if standalone
+- Tag radar chart has a text-based fallback: table of tag names + completion scores
+- Score animation final value is announced via aria-live region after animation completes
+- Challenge status (locked/available/completed) conveyed via aria-label, not just visual state
+
+### 7.4 Motion Sensitivity
+- All animations respect `prefers-reduced-motion` media query:
+  - Confetti: skipped entirely
+  - Score counter: jumps to final value immediately
+  - Card hover lifts: disabled
+  - Badge fly-in: appears instantly without animation
+- Streak fire emoji animation: static emoji if reduced motion
+
+### 7.5 Semantic HTML
+- Challenge grid uses `<article>` elements
+- Navigation uses `<nav>` with aria-label
+- Sections use heading hierarchy (h1 → h2 → h3, never skipping)
+- Forms use `<label>` elements associated with inputs
+- Tables include `<caption>` and `scope` attributes on headers
+
+---
+
+## 8. Empty States (PM Review Addition)
+
+### 8.1 No Filter Matches
+- Illustration: magnifying glass with question mark
+- Message: "No challenges match your current filters"
+- CTA: [Clear all filters] (ghost button) or "Try different tags"
+
+### 8.2 No Completed Challenges (New User)
+- Illustration: rocket on launchpad
+- Message: "Your challenge journey starts here"
+- CTA: [Start Your First Challenge →] (primary button)
+
+### 8.3 Empty Leaderboard (< 3 Participants)
+- Simplified podium with placeholder silhouettes
+- Message: "Be among the first to earn a spot!"
+- CTA: [Browse Challenges →]
+
+### 8.4 Empty Manager Dashboard
+- Illustration: team silhouettes
+- Message: "None of your team members have started yet"
+- CTA: [Send Slack Invite →] (primary) + "Share this link with your team" (copy link)
+
+### 8.5 Empty Portfolio
+- Message: "Complete challenges to build your portfolio of work products"
+- Shows 3 example challenge cards as "start here" suggestions
+
+---
+
+## 9. Slack Message Designs (PM Review Addition)
+
+### 9.1 Challenge Completion Notification
+```
+┌──────────────────────────────────────────────┐
+│ 🎯 NuChallenge                               │
+│                                               │
+│ Sofia completed CH-05: Spot the Hallucination│
+│                                               │
+│ Score: 87/100  •  Points: +222               │
+│ Tags: AI Evaluation, Critical Thinking       │
+│                                               │
+│ [View on NuChallenge]                        │
+└──────────────────────────────────────────────┘
+```
+
+### 9.2 Badge Earned
+```
+┌──────────────────────────────────────────────┐
+│ 🏅 NuChallenge                               │
+│                                               │
+│ Sofia earned the "Bug Hunter" badge!         │
+│ Found all planted errors in 3+ challenges    │
+│                                               │
+│ [View Profile]                               │
+└──────────────────────────────────────────────┘
+```
+
+### 9.3 Weekly Team Digest
+```
+┌──────────────────────────────────────────────┐
+│ 📊 NuChallenge Weekly — Product Management   │
+│                                               │
+│ This week: 8 challenges completed by 4 team  │
+│ members. Team average score: 81/100          │
+│                                               │
+│ 🔥 Longest streak: Rafael (12 days)          │
+│ ⭐ Highest score: Sofia (97 on CH-09)        │
+│ 🆕 2 team members started this week          │
+│                                               │
+│ [View Team Dashboard]                        │
+└──────────────────────────────────────────────┘
+```
+
+---
+
+## 10. Additional PM Review Additions
+
+### 10.1 Search Bar (Explorer)
+
+Search input appears above the filter row:
+```
+┌──────────────────────────────────────────────┐
+│ 🔍 Search challenges...                      │
+└──────────────────────────────────────────────┘
+```
+- Searches title, description, and tags simultaneously
+- Results highlight matching text with yellow background
+- Debounced (300ms) to avoid excessive filtering
+- URL-persistent: `/challenges?q=hallucination`
+- Keyboard shortcut: `/` focuses the search bar (like GitHub)
+
+### 10.2 Tag Map View (Explorer)
+
+Toggle between "Grid" and "Map" views on the Explorer page.
+
+**Map view:** All 22 tags displayed as interactive bubbles:
+- Bubble size proportional to number of challenges with that tag
+- Bubble color: gradient from gray (0% completed) to purple (100% completed)
+- Click a bubble → filter grid view to that tag
+- Hover shows: "Prompt Engineering — 8 challenges, 3 completed"
+
+### 10.3 Context Assets Panel (Workspace)
+
+For challenges with prerequisites that produced assets:
+```
+┌─ CONTEXT ASSETS ──────────────────────────────┐
+│ 📎 Your Data Dictionary (from CH-12)          │
+│    Completed Mar 28  •  Score: 92/100         │
+│    [Expand to view full asset ▾]              │
+│                                                │
+│ 📎 This challenge also references:            │
+│    CH-12 rubric context (auto-loaded)         │
+└────────────────────────────────────────────────┘
+```
+- Assets are read-only in the workspace
+- Expandable/collapsible (starts collapsed to save space)
+- If the prerequisite score was low, a note: "Consider retrying CH-12 for a stronger foundation asset"
+
+### 10.4 Appeal Modal (Results)
+
+```
+┌─ Appeal Evaluation ──────────────────────────┐
+│                                               │
+│ Which criteria do you want to appeal?        │
+│ ☑ Errors Found (50%) — scored 8/10          │
+│ ☐ Quality of Corrections (30%) — scored 9/10│
+│ ☐ Source Reliability (20%) — scored 8/10     │
+│                                               │
+│ Explain why you disagree:                    │
+│ ┌───────────────────────────────────────────┐│
+│ │                                           ││
+│ │ I found all 5 hallucinations, including   ││
+│ │ the revenue figure which was marked as    ││
+│ │ missed in my evaluation...                ││
+│ │                                           ││
+│ └───────────────────────────────────────────┘│
+│                                               │
+│ Appeals are reviewed within 7 days by a      │
+│ different evaluator.                          │
+│                                               │
+│ [Cancel]                    [Submit Appeal]   │
+└───────────────────────────────────────────────┘
+```
+
+### 10.5 Onboarding Value Proposition Screen
+
+Inserted before tag selector:
+```
+┌──────────────────────────────────────────────┐
+│                                               │
+│      [Illustration: challenge loop]          │
+│      Start → Solve → Evaluate → Earn         │
+│                                               │
+│  Prove your AI skills through real           │
+│  challenges. Pick skills you're interested   │
+│  in and start your first challenge in        │
+│  under 2 minutes.                            │
+│                                               │
+│         [Let's Go →] (primary button)        │
+│                                               │
+└──────────────────────────────────────────────┘
+```
+- Single screen, no pagination, no skip button needed (it's already 5 seconds)
+- Illustration shows the 4-step cycle with simple icons
+- After clicking "Let's Go" → tag selector appears
+
+---
+
 ## Appendix: Screen Inventory
 
 | # | Screen | URL | Priority |
