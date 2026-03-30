@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
+}
+
+:root {
+  --purple-600: #7C3AED;
+  --purple-100: #EDE9FE;
+  --purple-50: #F5F3FF;
+  --fuchsia-500: #D946EF;
+}
+
+body {
+  color: #111827;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
