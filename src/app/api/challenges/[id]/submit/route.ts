@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { submitChallengeSchema } from '@/lib/validators/challenges';
 import { jsonResponse, errorResponse, handleApiError, requireAuth } from '@/lib/api-utils';
 import { logAuditEvent } from '@/lib/services/audit';
+import { inngest } from '@/lib/services/evaluation/inngest-client';
 
 export async function POST(
   req: NextRequest,
@@ -51,11 +52,15 @@ export async function POST(
       metadata: { challengeId: id, textLength: body.submissionText?.length ?? 0 },
     });
 
-    // TODO: Trigger Inngest evaluation job
-    // await inngest.send({
-    //   name: 'submission/created',
-    //   data: { attemptId: body.attemptId, challengeId: id, submissionText: body.submissionText },
-    // });
+    // Trigger async evaluation via Inngest
+    await inngest.send({
+      name: 'submission/created',
+      data: {
+        attemptId: body.attemptId,
+        challengeId: id,
+        submissionText: body.submissionText ?? '',
+      },
+    });
 
     return jsonResponse({
       attemptId: body.attemptId,
