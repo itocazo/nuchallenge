@@ -141,9 +141,12 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
               </div>
             )}
 
-            <button className="mt-4 w-full rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 active:scale-[0.98]">
+            <Link
+              href={`/challenges/${id}/workspace`}
+              className="mt-4 flex w-full items-center justify-center rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 active:scale-[0.98]"
+            >
               Start Challenge
-            </button>
+            </Link>
           </div>
 
           {/* Hints */}
