@@ -33,6 +33,7 @@ export const users = pgTable('users', {
   lastActivityDate: date('last_activity_date'),
   badges: text('badges').array().default([]),
   passwordHash: text('password_hash'),
+  suspendedAt: timestamp('suspended_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 }, (table) => [

@@ -2,13 +2,16 @@
  * Database seed script
  * Run with: npx tsx src/db/seed.ts
  *
- * Seeds the database with challenges and demo users from the seed data.
+ * Seeds the database with challenges, demo users, and admin user.
  */
 import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
+import { eq } from 'drizzle-orm';
 import * as schema from './schema';
 import { SEED_CHALLENGES, SEED_USERS } from '../lib/data';
+import { generatePassword, hashPassword } from '../lib/services/password';
+import { sendWelcomeEmail } from '../lib/services/email';
 
 async function seed() {
   const sql = neon(process.env.DATABASE_URL!);
@@ -41,7 +44,7 @@ async function seed() {
   }
   console.log(`  ✓ ${SEED_CHALLENGES.length} challenges seeded`);
 
-  console.log('Seeding users...');
+  console.log('Seeding demo users...');
   for (const user of SEED_USERS) {
     await db
       .insert(schema.users)
@@ -60,11 +63,56 @@ async function seed() {
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak,
         badges: user.badges,
-        passwordHash: 'demo', // Phase 1 only
+        passwordHash: 'demo', // Demo users use 'demo' as password
       })
       .onConflictDoNothing();
   }
-  console.log(`  ✓ ${SEED_USERS.length} users seeded`);
+  console.log(`  ✓ ${SEED_USERS.length} demo users seeded`);
+
+  // Seed admin user: Jardel Itocazo
+  console.log('Seeding admin user...');
+  const adminEmail = 'jardell@gmail.com';
+  const [existingAdmin] = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.email, adminEmail))
+    .limit(1);
+
+  if (!existingAdmin) {
+    const adminPassword = generatePassword();
+    const adminHash = await hashPassword(adminPassword);
+
+    await db.insert(schema.users).values({
+      email: adminEmail,
+      name: 'Jardel Itocazo',
+      department: 'Engineering',
+      title: 'Platform Admin',
+      platformRole: ['challenger', 'admin'],
+      level: 1,
+      levelName: 'Novice',
+      pointsTotal: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      badges: [],
+      interests: [],
+      passwordHash: adminHash,
+    });
+
+    await sendWelcomeEmail({
+      to: adminEmail,
+      name: 'Jardel Itocazo',
+      password: adminPassword,
+    });
+
+    console.log(`  ✓ Admin user created (${adminEmail})`);
+  } else {
+    // Ensure existing user has admin role
+    await db
+      .update(schema.users)
+      .set({ platformRole: ['challenger', 'admin'] })
+      .where(eq(schema.users.email, adminEmail));
+    console.log(`  ✓ Admin role ensured for ${adminEmail}`);
+  }
 
   console.log('Done!');
 }

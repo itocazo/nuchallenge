@@ -12,7 +12,15 @@ type AuditEventType =
   | 'user.login'
   | 'user.profile_updated'
   | 'manager.nudge_sent'
-  | 'draft.saved';
+  | 'draft.saved'
+  | 'admin.user.created'
+  | 'admin.user.role_changed'
+  | 'admin.user.suspended'
+  | 'admin.user.reactivated'
+  | 'admin.challenge.created'
+  | 'admin.challenge.updated'
+  | 'admin.challenge.toggled'
+  | 'admin.attempt.score_override';
 
 interface AuditEntry {
   eventType: AuditEventType;
