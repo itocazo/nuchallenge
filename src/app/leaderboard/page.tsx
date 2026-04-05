@@ -1,26 +1,28 @@
 'use client';
 
+import { useApi } from '@/lib/hooks/use-api';
 import { SEED_LEADERBOARD } from '@/lib/data';
+import { LeaderboardEntry } from '@/lib/types';
 import { getInitials, formatPoints } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { Trophy, Medal, Flame, TrendingUp } from 'lucide-react';
+import { Trophy, Medal, Flame, TrendingUp, Loader2 } from 'lucide-react';
 
 const PODIUM_COLORS = [
-  'from-amber-400 to-amber-500',   // 1st
-  'from-gray-300 to-gray-400',     // 2nd
-  'from-amber-600 to-amber-700',   // 3rd
+  'from-amber-400 to-amber-500',
+  'from-gray-300 to-gray-400',
+  'from-amber-600 to-amber-700',
 ];
 
 const PODIUM_HEIGHTS = ['h-28', 'h-20', 'h-16'];
-const PODIUM_ORDER = [1, 0, 2]; // display 2nd, 1st, 3rd
+const PODIUM_ORDER = [1, 0, 2];
 
-function PodiumCard({ entry, index }: { entry: typeof SEED_LEADERBOARD[0]; index: number }) {
+function PodiumCard({ entry, index }: { entry: LeaderboardEntry; index: number }) {
   const isFirst = index === 0;
   return (
     <div className="flex flex-col items-center">
       <div className={cn(
-        'relative mb-2 flex h-14 w-14 items-center justify-center rounded-full font-bold text-white',
-        isFirst ? 'h-16 w-16 text-lg' : 'text-base',
+        'relative mb-2 flex items-center justify-center rounded-full font-bold text-white',
+        isFirst ? 'h-16 w-16 text-lg' : 'h-14 w-14 text-base',
         `bg-gradient-to-br ${PODIUM_COLORS[index]}`
       )}>
         {getInitials(entry.name)}
@@ -50,8 +52,20 @@ function PodiumCard({ entry, index }: { entry: typeof SEED_LEADERBOARD[0]; index
 }
 
 export default function LeaderboardPage() {
-  const top3 = SEED_LEADERBOARD.slice(0, 3);
-  const rest = SEED_LEADERBOARD.slice(3);
+  const { data, loading } = useApi<{ entries: LeaderboardEntry[]; currentUserRank: number | null }>('/api/leaderboard');
+
+  const entries = data?.entries ?? SEED_LEADERBOARD;
+  const currentUserRank = data?.currentUserRank ?? SEED_LEADERBOARD.find(e => e.isCurrentUser)?.rank ?? null;
+  const top3 = entries.slice(0, 3);
+  const currentUser = entries.find(e => e.isCurrentUser);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -60,16 +74,16 @@ export default function LeaderboardPage() {
         <p className="mt-1 text-sm text-gray-500">Top performers across all challenges</p>
       </div>
 
-      {/* Podium */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
-        <div className="flex items-end justify-center gap-4">
-          {PODIUM_ORDER.map(i => (
-            top3[i] && <PodiumCard key={top3[i].userId} entry={top3[i]} index={i} />
-          ))}
+      {top3.length >= 3 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6">
+          <div className="flex items-end justify-center gap-4">
+            {PODIUM_ORDER.map(i => (
+              top3[i] && <PodiumCard key={top3[i].userId} entry={top3[i]} index={i} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Full Table */}
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <table className="w-full">
           <thead>
@@ -82,7 +96,7 @@ export default function LeaderboardPage() {
             </tr>
           </thead>
           <tbody>
-            {SEED_LEADERBOARD.map(entry => (
+            {entries.map(entry => (
               <tr
                 key={entry.userId}
                 className={cn(
@@ -143,26 +157,23 @@ export default function LeaderboardPage() {
         </table>
       </div>
 
-      {/* Your Position Highlight */}
-      {(() => {
-        const currentUser = SEED_LEADERBOARD.find(e => e.isCurrentUser);
-        if (!currentUser) return null;
-        return (
-          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-sm font-semibold text-purple-900">
-                  You&apos;re ranked #{currentUser.rank} with {formatPoints(currentUser.points)} points
-                </p>
-                <p className="text-xs text-purple-600">
-                  Complete {SEED_LEADERBOARD[0].challengesCompleted - currentUser.challengesCompleted} more challenges to reach #1
-                </p>
-              </div>
+      {currentUser && (
+        <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="h-5 w-5 text-purple-600" />
+            <div>
+              <p className="text-sm font-semibold text-purple-900">
+                You&apos;re ranked #{currentUserRank ?? currentUser.rank} with {formatPoints(currentUser.points)} points
+              </p>
+              <p className="text-xs text-purple-600">
+                {entries[0] && currentUser.challengesCompleted < entries[0].challengesCompleted
+                  ? `Complete ${entries[0].challengesCompleted - currentUser.challengesCompleted} more challenges to reach #1`
+                  : 'Keep up the great work!'}
+              </p>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
     </div>
   );
 }

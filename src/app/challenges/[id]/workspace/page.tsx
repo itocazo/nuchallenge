@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useApi, apiPost, apiPatch } from '@/lib/hooks/use-api';
 import { SEED_CHALLENGES } from '@/lib/data';
 import DifficultyBadge from '@/components/ui/DifficultyBadge';
 import TagPill from '@/components/ui/TagPill';
@@ -13,16 +14,62 @@ import {
   Lightbulb, FileText, AlertCircle, Loader2,
 } from 'lucide-react';
 
+interface StartResponse {
+  attemptId: string;
+  instructions: string | null;
+  draftText: string | null;
+  resumed: boolean;
+}
+
 export default function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const challenge = SEED_CHALLENGES.find(c => c.id === id);
+  const searchParams = useSearchParams();
+  const attemptIdFromUrl = searchParams.get('attempt');
 
+  // Fetch challenge detail
+  const { data: challengeData } = useApi<{ challenge: { instructions: string; hints: { level: number; text: string }[] } & Record<string, unknown> }>(`/api/challenges/${id}`);
+  const seedChallenge = SEED_CHALLENGES.find(c => c.id === id);
+  const challenge = challengeData?.challenge ?? seedChallenge;
+
+  const [attemptId, setAttemptId] = useState<string | null>(attemptIdFromUrl);
   const [submission, setSubmission] = useState('');
   const [showBrief, setShowBrief] = useState(true);
   const [hintsRevealed, setHintsRevealed] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Auto-start attempt if none from URL
+  useEffect(() => {
+    if (!attemptIdFromUrl && id) {
+      apiPost<StartResponse>(`/api/challenges/${id}/start`)
+        .then(res => {
+          setAttemptId(res.attemptId);
+          if (res.draftText) setSubmission(res.draftText);
+        })
+        .catch(() => {
+          // Demo mode — no attempt tracking
+        });
+    }
+  }, [attemptIdFromUrl, id]);
+
+  // Autosave draft every 30 seconds
+  const lastSaved = useRef('');
+  const saveDraft = useCallback(async () => {
+    if (!attemptId || !submission || submission === lastSaved.current) return;
+    try {
+      await apiPatch(`/api/attempts/${attemptId}/draft`, { draftText: submission });
+      lastSaved.current = submission;
+    } catch {
+      // Silent fail for autosave
+    }
+  }, [attemptId, submission]);
+
+  useEffect(() => {
+    const interval = setInterval(saveDraft, 30000);
+    return () => clearInterval(interval);
+  }, [saveDraft]);
 
   if (!challenge) {
     return (
@@ -36,18 +83,46 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
     );
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!submission.trim()) return;
     setIsSubmitting(true);
-    // Simulate submission delay then redirect to results
+    setSubmitError(null);
+
+    // Save final draft
+    await saveDraft();
+
+    if (attemptId) {
+      try {
+        const result = await apiPost<{ attemptId: string }>(`/api/challenges/${id}/submit`, {
+          attemptId,
+          submissionText: submission,
+        });
+        router.push(`/challenges/${id}/results?attempt=${result.attemptId}`);
+        return;
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'Submission failed');
+        setIsSubmitting(false);
+        setShowConfirm(false);
+        return;
+      }
+    }
+
+    // Demo mode fallback
     setTimeout(() => {
       router.push(`/challenges/${id}/results`);
     }, 2000);
   };
 
+  const tags = (challenge as Record<string, unknown>).tags as string[] | undefined;
+  const difficulty = (challenge as Record<string, unknown>).difficulty as string;
+  const timeMinutes = (challenge as Record<string, unknown>).timeMinutes as number;
+  const title = (challenge as Record<string, unknown>).title as string;
+  const instructions = challenge.instructions ?? '';
+  const hints = challenge.hints ?? [];
+  const rubricCriteria = seedChallenge?.rubric?.criteria ?? [];
+
   return (
     <div className="mx-auto max-w-6xl">
-      {/* Top Bar */}
       <div className="mb-4 flex items-center justify-between gap-4">
         <Link
           href={`/challenges/${id}`}
@@ -57,29 +132,33 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
           Exit Workspace
         </Link>
         <div className="flex items-center gap-3">
-          <DifficultyBadge difficulty={challenge.difficulty} />
-          <span className="text-xs text-gray-400">{challenge.id}</span>
+          <DifficultyBadge difficulty={difficulty as 'beginner' | 'intermediate' | 'advanced' | 'expert'} />
+          <span className="text-xs text-gray-400">{id}</span>
         </div>
       </div>
 
-      <h1 className="mb-2 text-xl font-extrabold tracking-tight text-gray-900">{challenge.title}</h1>
+      <h1 className="mb-2 text-xl font-extrabold tracking-tight text-gray-900">{title}</h1>
       <div className="mb-5 flex flex-wrap gap-1.5">
-        {challenge.tags.map(tag => (
+        {tags?.map(tag => (
           <TagPill key={tag} tag={tag} size="sm" />
         ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Editor Area */}
         <div className="space-y-4 lg:col-span-2">
-          <Timer totalMinutes={challenge.timeMinutes} />
+          <Timer totalMinutes={timeMinutes} />
           <MarkdownEditor
             value={submission}
             onChange={setSubmission}
-            placeholder={`Write your submission for "${challenge.title}"...\n\nMarkdown is supported. Be thorough — the AI evaluator will check against ${challenge.rubric.criteria.length} criteria.`}
+            placeholder={`Write your submission for "${title}"...\n\nMarkdown is supported. Be thorough — the AI evaluator will check against ${rubricCriteria.length} criteria.`}
           />
 
-          {/* Submit Bar */}
+          {submitError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-400">
               {submission.trim().split(/\s+/).filter(Boolean).length} words written
@@ -124,9 +203,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          {/* Challenge Brief */}
           <div className="rounded-xl border border-gray-200 bg-white">
             <button
               onClick={() => setShowBrief(!showBrief)}
@@ -141,17 +218,16 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
             {showBrief && (
               <div className="border-t border-gray-100 p-4">
                 <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-600">
-                  {challenge.instructions}
+                  {instructions}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Evaluation Criteria */}
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <h3 className="mb-3 text-sm font-semibold text-gray-900">Evaluation Criteria</h3>
             <div className="space-y-2">
-              {challenge.rubric.criteria.map(c => (
+              {rubricCriteria.map(c => (
                 <div key={c.name} className="flex items-center justify-between text-xs">
                   <span className="text-gray-600">{c.name}</span>
                   <span className="font-semibold tabular-nums text-gray-900">{c.weight}%</span>
@@ -160,14 +236,13 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
             </div>
           </div>
 
-          {/* Hints */}
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
               <Lightbulb className="h-4 w-4 text-amber-500" />
-              Hints ({hintsRevealed}/{challenge.hints.length})
+              Hints ({hintsRevealed}/{hints.length})
             </h3>
             <div className="space-y-2">
-              {challenge.hints.map((hint, i) => (
+              {hints.map((hint, i) => (
                 <div key={i}>
                   {i < hintsRevealed ? (
                     <div className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">

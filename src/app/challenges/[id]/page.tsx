@@ -1,17 +1,40 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
+import { useApi, apiPost } from '@/lib/hooks/use-api';
 import { SEED_CHALLENGES } from '@/lib/data';
+import { Challenge } from '@/lib/types';
 import DifficultyBadge from '@/components/ui/DifficultyBadge';
 import TagPill from '@/components/ui/TagPill';
-import { ArrowLeft, Clock, Zap, Shield, BookOpen, CheckCircle2, Lock, Lightbulb } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Clock, Zap, Shield, BookOpen, CheckCircle2, Lock, Lightbulb, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface ChallengeDetail extends Challenge {
+  userStatus: string;
+  bestScore: number | null;
+  attemptsRemaining: number;
+  activeAttemptId: string | null;
+}
 
 export default function ChallengeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const challenge = SEED_CHALLENGES.find(c => c.id === id);
+  const router = useRouter();
+  const { data, loading } = useApi<{ challenge: ChallengeDetail }>(`/api/challenges/${id}`);
   const [hintsRevealed, setHintsRevealed] = useState(0);
+  const [starting, setStarting] = useState(false);
+
+  // Fallback to seed data
+  const seedChallenge = SEED_CHALLENGES.find(c => c.id === id);
+  const challenge = data?.challenge ?? seedChallenge;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+      </div>
+    );
+  }
 
   if (!challenge) {
     return (
@@ -28,6 +51,21 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
     SEED_CHALLENGES.find(c => c.id === pid)
   ).filter(Boolean);
 
+  const handleStart = async () => {
+    setStarting(true);
+    try {
+      const result = await apiPost<{ attemptId: string }>(`/api/challenges/${id}/start`);
+      router.push(`/challenges/${id}/workspace?attempt=${result.attemptId}`);
+    } catch {
+      // If API fails, navigate to workspace in demo mode
+      router.push(`/challenges/${id}/workspace`);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const attemptsRemaining = (data?.challenge as ChallengeDetail)?.attemptsRemaining ?? 3;
+
   return (
     <div className="mx-auto max-w-5xl">
       <Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
@@ -35,7 +73,6 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
       </Link>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        {/* Main Content */}
         <div className="space-y-6 lg:col-span-2">
           <div>
             <div className="mb-2 flex items-center gap-3">
@@ -90,7 +127,6 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <div className="space-y-4">
@@ -113,6 +149,10 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
                 <Shield className="h-4 w-4 text-gray-400" />
                 <span className="text-gray-600">Anti-cheat</span>
                 <span className="ml-auto font-semibold text-gray-900">{challenge.antiCheatTier}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-gray-600">Attempts remaining</span>
+                <span className="ml-auto font-semibold text-gray-900">{attemptsRemaining}/3</span>
               </div>
             </div>
 
@@ -141,15 +181,19 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
               </div>
             )}
 
-            <Link
-              href={`/challenges/${id}/workspace`}
-              className="mt-4 flex w-full items-center justify-center rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 active:scale-[0.98]"
+            <button
+              onClick={handleStart}
+              disabled={starting || attemptsRemaining === 0}
+              className="mt-4 flex w-full items-center justify-center rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 active:scale-[0.98] disabled:opacity-50"
             >
-              Start Challenge
-            </Link>
+              {starting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</>
+              ) : (
+                'Start Challenge'
+              )}
+            </button>
           </div>
 
-          {/* Hints */}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
               <Lightbulb className="h-4 w-4 text-amber-500" />

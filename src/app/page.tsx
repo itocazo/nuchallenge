@@ -1,48 +1,104 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
+import { useApi } from '@/lib/hooks/use-api';
 import { SEED_CHALLENGES, SEED_USERS } from '@/lib/data';
-import { ALL_TAGS, Difficulty, ChallengeUserStatus } from '@/lib/types';
+import { ALL_TAGS, Difficulty, ChallengeUserStatus, Challenge } from '@/lib/types';
 import ChallengeCard from '@/components/challenges/ChallengeCard';
 import TagPill from '@/components/ui/TagPill';
 import StatCard from '@/components/ui/StatCard';
-import { Search, Target, CheckCircle2, Clock, Flame, X, Sparkles } from 'lucide-react';
+import { Search, Target, CheckCircle2, Clock, Flame, X, Sparkles, Loader2 } from 'lucide-react';
 
-const DEMO_STATUS: Record<string, { status: ChallengeUserStatus; score?: number }> = {
-  'CH-01': { status: 'completed', score: 87 },
-  'CH-02': { status: 'completed', score: 92 },
-  'CH-21': { status: 'completed', score: 78 },
-  'CH-22': { status: 'completed', score: 85 },
-  'CH-31': { status: 'completed', score: 90 },
-  'CH-32': { status: 'completed', score: 88 },
-  'CH-41': { status: 'completed', score: 76 },
-  'CH-11': { status: 'completed', score: 95 },
-  'CH-12': { status: 'completed', score: 81 },
-  'CH-05': { status: 'in_progress' },
-  'CH-42': { status: 'completed', score: 84 },
-  'CH-33': { status: 'completed', score: 91 },
-};
+interface ApiChallenge {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  difficulty: Difficulty;
+  timeMinutes: number;
+  pointsBase: number;
+  evaluationMethod: string;
+  antiCheatTier: string;
+  prerequisites: string[];
+  producesAsset: boolean;
+  userStatus: ChallengeUserStatus;
+  bestScore: number | null;
+  prerequisitesMet: boolean;
+}
 
-function getChallengeStatus(id: string): ChallengeUserStatus {
-  return DEMO_STATUS[id]?.status ?? 'available';
+interface ApiUser {
+  name: string;
+  currentStreak: number;
+  challengeStats: { completed: number; inProgress: number };
+}
+
+function toChallenge(ac: ApiChallenge): Challenge {
+  return {
+    ...ac,
+    instructions: '',
+    submissionFormat: '',
+    rubric: { criteria: [] },
+    assetType: null,
+    hints: [],
+    active: true,
+  } as Challenge;
 }
 
 export default function ExplorerPage() {
-  const user = SEED_USERS[0];
+  const { status: sessionStatus } = useSession();
+  const isAuth = sessionStatus === 'authenticated';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | 'all'>('all');
   const [selectedStatus, setSelectedStatus] = useState<ChallengeUserStatus | 'all'>('all');
 
-  const completedCount = Object.values(DEMO_STATUS).filter(d => d.status === 'completed').length;
+  // Build API query string
+  const queryParams = useMemo(() => {
+    const p = new URLSearchParams();
+    p.set('limit', '100');
+    if (searchQuery) p.set('search', searchQuery);
+    if (selectedDifficulty !== 'all') p.set('difficulty', selectedDifficulty);
+    if (selectedStatus !== 'all') p.set('status', selectedStatus);
+    if (selectedTags.length > 0) p.set('tags', selectedTags.join(','));
+    return p.toString();
+  }, [searchQuery, selectedDifficulty, selectedStatus, selectedTags]);
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    );
+  const { data: challengesData, loading: challengesLoading } = useApi<{ challenges: ApiChallenge[] }>(
+    `/api/challenges?${queryParams}`
+  );
+  const { data: userData } = useApi<ApiUser>(isAuth ? '/api/users/me' : null);
+
+  // Fallback to seed data if API fails or returns empty (no DB)
+  const challenges = challengesData?.challenges;
+  const useSeed = !challengesLoading && !challenges;
+
+  const userName = userData?.name ?? SEED_USERS[0].name;
+  const currentStreak = userData?.currentStreak ?? SEED_USERS[0].currentStreak;
+  const completedCount = userData?.challengeStats?.completed ?? 0;
+  const inProgressCount = userData?.challengeStats?.inProgress ?? 0;
+
+  // Seed data fallback
+  const SEED_STATUS: Record<string, { status: ChallengeUserStatus; score?: number }> = {
+    'CH-01': { status: 'completed', score: 87 },
+    'CH-02': { status: 'completed', score: 92 },
+    'CH-21': { status: 'completed', score: 78 },
+    'CH-05': { status: 'in_progress' },
   };
 
+  const getSeedStatus = (id: string): ChallengeUserStatus => SEED_STATUS[id]?.status ?? 'available';
+  const seedCompleted = Object.values(SEED_STATUS).filter(d => d.status === 'completed').length;
+
   const filteredChallenges = useMemo(() => {
+    if (!useSeed && challenges) {
+      return challenges.map(c => ({
+        challenge: toChallenge(c),
+        userStatus: c.userStatus,
+        bestScore: c.bestScore,
+      }));
+    }
+    // Seed fallback with client-side filtering
     return SEED_CHALLENGES.filter(c => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -54,37 +110,56 @@ export default function ExplorerPage() {
       }
       if (selectedTags.length > 0 && !c.tags.some(t => selectedTags.includes(t))) return false;
       if (selectedDifficulty !== 'all' && c.difficulty !== selectedDifficulty) return false;
-      if (selectedStatus !== 'all' && getChallengeStatus(c.id) !== selectedStatus) return false;
+      if (selectedStatus !== 'all' && getSeedStatus(c.id) !== selectedStatus) return false;
       return true;
-    });
-  }, [searchQuery, selectedTags, selectedDifficulty, selectedStatus]);
+    }).map(c => ({
+      challenge: c,
+      userStatus: getSeedStatus(c.id),
+      bestScore: SEED_STATUS[c.id]?.score ?? null,
+    }));
+  }, [useSeed, challenges, searchQuery, selectedTags, selectedDifficulty, selectedStatus]);
 
-  const recommended = SEED_CHALLENGES
-    .filter(c => getChallengeStatus(c.id) === 'available')
+  const availableCount = useSeed
+    ? SEED_CHALLENGES.filter(c => getSeedStatus(c.id) === 'available').length
+    : (challenges?.filter(c => c.userStatus === 'available').length ?? 0);
+
+  const displayCompleted = useSeed ? seedCompleted : completedCount;
+  const displayInProgress = useSeed
+    ? Object.values(SEED_STATUS).filter(d => d.status === 'in_progress').length
+    : inProgressCount;
+
+  const recommended = filteredChallenges
+    .filter(c => c.userStatus === 'available')
     .slice(0, 3);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-[2rem] font-extrabold tracking-tight text-gray-900">
-          Welcome back, {user.name.split(' ')[0]}
+          Welcome back, {userName.split(' ')[0]}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          {completedCount}/50 challenges completed
+          {displayCompleted}/50 challenges completed
         </p>
         <div className="mt-3 h-2 w-full max-w-md overflow-hidden rounded-full bg-gray-100">
           <div
             className="h-2 rounded-full bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 transition-all"
-            style={{ width: `${(completedCount / 50) * 100}%` }}
+            style={{ width: `${(displayCompleted / 50) * 100}%` }}
           />
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Target} label="Available" value={SEED_CHALLENGES.filter(c => getChallengeStatus(c.id) === 'available').length} accent="purple" />
-        <StatCard icon={Clock} label="In Progress" value={Object.values(DEMO_STATUS).filter(d => d.status === 'in_progress').length} accent="amber" />
-        <StatCard icon={CheckCircle2} label="Completed" value={completedCount} accent="emerald" />
-        <StatCard icon={Flame} label="Streak" value={`${user.currentStreak} days`} accent="orange" />
+        <StatCard icon={Target} label="Available" value={availableCount} accent="purple" />
+        <StatCard icon={Clock} label="In Progress" value={displayInProgress} accent="amber" />
+        <StatCard icon={CheckCircle2} label="Completed" value={displayCompleted} accent="emerald" />
+        <StatCard icon={Flame} label="Streak" value={`${currentStreak} days`} accent="orange" />
       </div>
 
       {recommended.length > 0 && (
@@ -95,7 +170,7 @@ export default function ExplorerPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
             {recommended.map(c => (
-              <ChallengeCard key={c.id} challenge={c} userStatus="available" />
+              <ChallengeCard key={c.challenge.id} challenge={c.challenge} userStatus={c.userStatus} />
             ))}
           </div>
         </div>
@@ -173,20 +248,26 @@ export default function ExplorerPage() {
 
       <div>
         <div className="mb-3 text-sm text-gray-500">
-          {filteredChallenges.length} challenge{filteredChallenges.length !== 1 ? 's' : ''}
+          {challengesLoading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading challenges...
+            </span>
+          ) : (
+            `${filteredChallenges.length} challenge${filteredChallenges.length !== 1 ? 's' : ''}`
+          )}
         </div>
         {filteredChallenges.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredChallenges.map(c => (
               <ChallengeCard
-                key={c.id}
-                challenge={c}
-                userStatus={getChallengeStatus(c.id)}
-                bestScore={DEMO_STATUS[c.id]?.score}
+                key={c.challenge.id}
+                challenge={c.challenge}
+                userStatus={c.userStatus}
+                bestScore={c.bestScore}
               />
             ))}
           </div>
-        ) : (
+        ) : !challengesLoading ? (
           <div className="rounded-xl border border-gray-200 bg-white py-16 text-center">
             <Search className="mx-auto mb-3 h-8 w-8 text-gray-300" />
             <p className="text-sm font-medium text-gray-900">No challenges match your filters</p>
@@ -197,7 +278,7 @@ export default function ExplorerPage() {
               Clear all filters
             </button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
