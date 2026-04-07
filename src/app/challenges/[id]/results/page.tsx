@@ -25,6 +25,14 @@ interface ResultData {
   pointsAwarded: number | null;
   evaluation: EvaluationResult | null;
   bonuses: { quality: number; speed: number; streak: number };
+  scoreBreakdown?: {
+    base: number;
+    qualityBonus: number;
+    speedBonus: number;
+    streakBonus: number;
+    total: number;
+    challengeMaxBase: number | null;
+  };
   attemptsRemaining: number;
   evaluating: boolean;
 }
@@ -105,10 +113,35 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   }
 
   const challenge = seedChallenge;
-  const pointsBase = challenge?.pointsBase ?? 100;
-  const pointsEarned = data?.pointsAwarded ?? Math.round(pointsBase * (overallScore / 100));
+  const challengeMaxBase =
+    data?.scoreBreakdown?.challengeMaxBase ?? challenge?.pointsBase ?? 100;
+  const pointsEarned =
+    data?.pointsAwarded ?? Math.round(challengeMaxBase * (overallScore / 100));
   const confidence = evaluation?.confidence ?? 0.87;
   const bonuses = data?.bonuses ?? { quality: 0, speed: 0, streak: 0 };
+
+  // Real ledger: base is the score-weighted amount actually earned
+  // (not the challenge's max base). Falls back to a computed value if the
+  // API hasn't returned a breakdown yet (demo mode / older attempts).
+  const totalBonuses = bonuses.quality + bonuses.speed + bonuses.streak;
+  const basePoints = data?.scoreBreakdown?.base ?? Math.max(0, pointsEarned - totalBonuses);
+  const ledger: Array<{ label: string; amount: number; hint?: string }> = [
+    {
+      label: 'Base score',
+      amount: basePoints,
+      hint: `${overallScore}% of ${challengeMaxBase} max`,
+    },
+  ];
+  if (bonuses.quality > 0) {
+    ledger.push({
+      label: 'Quality bonus',
+      amount: bonuses.quality,
+      hint: overallScore >= 90 ? 'Score ≥ 90' : 'Score ≥ 80',
+    });
+  }
+  if (bonuses.speed > 0) ledger.push({ label: 'Speed bonus', amount: bonuses.speed, hint: 'Finished early' });
+  if (bonuses.streak > 0) ledger.push({ label: 'Streak bonus', amount: bonuses.streak, hint: 'Daily streak' });
+
   const feedback = evaluation?.feedback ?? 'Your submission demonstrates a strong grasp of the core concepts. The structure is clear and the analysis shows critical thinking beyond surface-level AI output. To improve further, consider adding more specific metrics and quantifying your assertions where possible.';
 
   return (
@@ -146,23 +179,43 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         <div className="flex flex-col items-center gap-6 lg:col-span-2">
           <ScoreRing score={overallScore} />
 
-          <div className="w-full rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-amber-700">
+          <div className="w-full overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-b from-amber-50 to-amber-50/40">
+            <div className="flex items-center justify-center gap-2 border-b border-amber-200/70 px-4 py-3 text-amber-900">
               <Trophy className="h-5 w-5" />
-              <span className="text-lg font-bold tabular-nums">+{pointsEarned} pts</span>
+              <span className="text-2xl font-extrabold tabular-nums tracking-tight">
+                +{pointsEarned}
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-700/80">
+                pts earned
+              </span>
             </div>
-            <p className="mt-1 text-xs text-amber-600">
-              {pointsEarned > pointsBase
-                ? `${pointsBase} base + ${pointsEarned - pointsBase} bonus`
-                : `${pointsEarned}/${pointsBase} base points`}
-            </p>
-            {(bonuses.quality > 0 || bonuses.speed > 0 || bonuses.streak > 0) && (
-              <div className="mt-2 space-y-0.5 text-xs text-amber-600">
-                {bonuses.quality > 0 && <div>Quality bonus: +{bonuses.quality}</div>}
-                {bonuses.speed > 0 && <div>Speed bonus: +{bonuses.speed}</div>}
-                {bonuses.streak > 0 && <div>Streak bonus: +{bonuses.streak}</div>}
+            <dl className="divide-y divide-amber-100">
+              {ledger.map((row) => (
+                <div
+                  key={row.label}
+                  className="flex items-baseline justify-between gap-3 px-4 py-2"
+                >
+                  <dt className="flex flex-col">
+                    <span className="text-xs font-medium text-amber-900">{row.label}</span>
+                    {row.hint && (
+                      <span className="text-[10px] text-amber-700/70">{row.hint}</span>
+                    )}
+                  </dt>
+                  <dd className="text-sm font-semibold tabular-nums text-amber-900">
+                    {row.label === 'Base score' ? '' : '+'}
+                    {row.amount}
+                  </dd>
+                </div>
+              ))}
+              <div className="flex items-baseline justify-between gap-3 border-t-2 border-amber-200 bg-amber-100/40 px-4 py-2">
+                <dt className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                  Total
+                </dt>
+                <dd className="text-base font-extrabold tabular-nums text-amber-900">
+                  {pointsEarned}
+                </dd>
               </div>
-            )}
+            </dl>
           </div>
 
           <div className="w-full rounded-xl border border-gray-200 bg-white p-4 text-center">

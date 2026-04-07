@@ -44,15 +44,32 @@ export async function GET(
       .limit(1);
 
     // Get point transactions for this attempt
-    const bonuses = await db
+    const txs = await db
       .select()
       .from(pointTransactions)
       .where(eq(pointTransactions.attemptId, id));
 
+    // Real breakdown: base (challenge_complete) + each bonus type.
+    // These always sum to pointsAwarded, so the UI can render a ledger
+    // that actually ties out instead of fabricating a "bonus = total - max" line.
+    const baseAmount = txs.find((b) => b.type === 'challenge_complete')?.amount ?? 0;
+    const qualityAmount = txs.find((b) => b.type === 'quality_bonus')?.amount ?? 0;
+    const speedAmount = txs.find((b) => b.type === 'speed_bonus')?.amount ?? 0;
+    const streakAmount = txs.find((b) => b.type === 'streak_bonus')?.amount ?? 0;
+
     const bonusMap = {
-      quality: bonuses.find(b => b.type === 'quality_bonus')?.amount ?? 0,
-      speed: bonuses.find(b => b.type === 'speed_bonus')?.amount ?? 0,
-      streak: bonuses.find(b => b.type === 'streak_bonus')?.amount ?? 0,
+      quality: qualityAmount,
+      speed: speedAmount,
+      streak: streakAmount,
+    };
+
+    const scoreBreakdown = {
+      base: baseAmount,
+      qualityBonus: qualityAmount,
+      speedBonus: speedAmount,
+      streakBonus: streakAmount,
+      total: baseAmount + qualityAmount + speedAmount + streakAmount,
+      challengeMaxBase: challenge?.pointsBase ?? null,
     };
 
     // Count remaining attempts
@@ -75,6 +92,7 @@ export async function GET(
       pointsAwarded: attempt.pointsAwarded,
       evaluation: attempt.evaluationResult,
       bonuses: bonusMap,
+      scoreBreakdown,
       attemptsRemaining: Math.max(0, 3 - allAttempts.length),
       evaluating: false,
     });
