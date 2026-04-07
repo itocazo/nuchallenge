@@ -84,9 +84,9 @@ The dispatcher returns the same `EvaluationOutput` shape that `scoring.ts` alrea
 | CH-19 | Pix Key Validator                      | intermediate   | code-sandbox  | **done** |
 | CH-20 | SQL Injection Triage                   | intermediate   | multi-choice  | **done** |
 | CH-21 | OpenAPI Contract Designer              | advanced       | structured    | **done** |
-| CH-22 | OAuth Sequence Diagram (Mermaid)       | intermediate   | structured    | planned  |
-| CH-23 | Transaction CSV Aggregator             | intermediate   | code-sandbox  | planned  |
-| CH-24 | Idempotency Key Middleware             | advanced       | code-sandbox  | planned  |
+| CH-22 | OAuth Sequence Diagram (Structured)    | intermediate   | structured    | **done** |
+| CH-23 | Transaction CSV Aggregator             | intermediate   | code-sandbox  | **done** |
+| CH-24 | Idempotency Key Middleware             | advanced       | code-sandbox  | **done** |
 
 ### Wave 3 — hybrid challenges (auto-test + ai-judge)
 
@@ -264,12 +264,25 @@ DATABASE_URL=... npx tsx scripts/verify-new-challenges.ts
 - 3 new entries in `src/lib/data.ts`: CH-19, CH-20, CH-21
 - `scripts/verify-new-challenges.ts` (covers 6 auto-graded IDs)
 
-### Session 3 (next — pick up here)
-- [ ] Try a real submission via the UI for each of the 6 auto-graded challenges
-- [ ] Implement CH-22 (Mermaid sequence diagram — structured w/ parser)
-- [ ] Implement CH-23 (Transaction CSV Aggregator — code-sandbox)
-- [ ] Implement CH-24 (Idempotency Key Middleware — code-sandbox, harder)
-- [ ] Inspect and improve UI for code-sandbox challenges (currently a textarea)
+### Session 3 (DONE)
+- [x] Implement CH-22 (OAuth Sequence Diagram — structured, keyed-step shape)
+- [x] Implement CH-23 (Transaction CSV Aggregator — code-sandbox)
+- [x] Implement CH-24 (Idempotency Key Middleware — code-sandbox, harder)
+  - [x] Extended code-sandbox grader with optional per-test `harness` field
+    so factory-style entrypoints (like `createIdempotencyStore`) can run
+    multi-step scenarios inside the same sandbox context.
+- [x] Extended e2e smoke tests (19 → 29 cases, all green)
+- [x] Re-seeded DB (21 → 24 challenges)
+
+**Artifacts produced this session:**
+- `src/lib/services/evaluation/auto-graders/code-sandbox-grader.ts` (harness support)
+- 3 new entries in `src/lib/data.ts`: CH-22, CH-23, CH-24
+- `src/lib/services/evaluation/__e2e_smoke_test__.ts` (19 → 29 tests)
+- `scripts/verify-new-challenges.ts` (covers 9 auto-graded IDs)
+
+**Deferred to Session 4:**
+- Try a real submission via the UI for each of the 9 auto-graded challenges
+- Inspect and improve UI for code-sandbox challenges (currently a textarea)
 
 ### Session 4 (planned)
 - [ ] Wave 3: hybrid challenges

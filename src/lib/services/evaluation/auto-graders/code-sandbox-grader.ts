@@ -23,8 +23,20 @@ export interface CodeSandboxGraderConfig {
   setup?: string;
   testCases: Array<{
     description: string;
+    /** Positional args to spread into the entrypoint function. Ignored when `harness` is set. */
     input: unknown[];
     expected: unknown;
+    /**
+     * Optional inline JS harness. If set, the grader runs this snippet
+     * inside the sandbox instead of calling the entrypoint directly. The
+     * snippet has access to the submitted code via the `${entrypoint}`
+     * binding and must assign the value to grade to `globalThis.__result`.
+     *
+     * Use this for stateful entrypoints like factories where a single
+     * function call can't cover multi-step scenarios (e.g. an idempotency
+     * store that needs handle() called several times in sequence).
+     */
+    harness?: string;
     /** If set, this test is hidden from learners until after submission */
     hidden?: boolean;
   }>;
@@ -149,11 +161,13 @@ ${submissionText}
   let passed = 0;
 
   for (const test of config.testCases) {
-    // Re-wrap each call in a vm script so we get a per-test timeout
-    const callScript = new vm.Script(
-      `globalThis.__result = globalThis.__entry(${test.input.map((v) => JSON.stringify(v)).join(', ')});`,
-      { filename: 'test-runner.js' }
-    );
+    // Re-wrap each call in a vm script so we get a per-test timeout. If
+    // the test ships an inline harness, run that; otherwise call the
+    // entrypoint with positional inputs.
+    const source = test.harness
+      ? `(function(){ ${test.harness} })();`
+      : `globalThis.__result = globalThis.__entry(${test.input.map((v) => JSON.stringify(v)).join(', ')});`;
+    const callScript = new vm.Script(source, { filename: 'test-runner.js' });
 
     try {
       callScript.runInContext(context, { timeout });

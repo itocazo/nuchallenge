@@ -259,6 +259,149 @@ function classifyPixKey(key) {
   // Empty submission
   await runChallenge('CH-21', '{}', 0, 5);
 
+  console.log('\n[CH-22 — OAuth Sequence Diagram]');
+  // All correct
+  await runChallenge(
+    'CH-22',
+    JSON.stringify({
+      participants: ['user', 'client', 'authServer', 'resourceServer'],
+      step1: { from: 'user', to: 'client' },
+      step2: { from: 'client', to: 'authServer', label: 'authorization_request' },
+      step3: { from: 'authServer', to: 'client', label: 'authorization_code' },
+      step4: { from: 'client', to: 'authServer', label: 'token_request' },
+      step5: { from: 'authServer', to: 'client', label: 'access_token' },
+      step6: { from: 'client', to: 'resourceServer', label: 'access_token' },
+    }),
+    100,
+    100
+  );
+  // Swap the auth_code and token_request steps (two steps wrong)
+  await runChallenge(
+    'CH-22',
+    JSON.stringify({
+      participants: ['user', 'client', 'authServer', 'resourceServer'],
+      step1: { from: 'user', to: 'client' },
+      step2: { from: 'client', to: 'authServer', label: 'authorization_request' },
+      step3: { from: 'authServer', to: 'client', label: 'token_request' }, // wrong label
+      step4: { from: 'client', to: 'authServer', label: 'authorization_code' }, // wrong label
+      step5: { from: 'authServer', to: 'client', label: 'access_token' },
+      step6: { from: 'client', to: 'resourceServer', label: 'access_token' },
+    }),
+    50,
+    85
+  );
+  // Missing resourceServer in participants
+  await runChallenge(
+    'CH-22',
+    JSON.stringify({
+      participants: ['user', 'client', 'authServer'],
+    }),
+    0,
+    20
+  );
+  // Empty object
+  await runChallenge('CH-22', '{}', 0, 5);
+
+  console.log('\n[CH-23 — Transaction CSV Aggregator]');
+  const csvCorrect = `
+function aggregateTransactions(csv) {
+  const lines = csv.split('\\n').filter(l => l.trim().length > 0);
+  if (lines.length <= 1) return {};
+  const totals = {};
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(';');
+    const category = parts[2];
+    const amount = parseFloat(parts[3].replace(',', '.'));
+    totals[category] = (totals[category] || 0) + amount;
+  }
+  for (const k of Object.keys(totals)) {
+    totals[k] = Math.round(totals[k] * 100) / 100;
+  }
+  return totals;
+}
+`;
+  await runChallenge('CH-23', csvCorrect, 100, 100);
+
+  // Broken: forgets to replace comma with dot
+  const csvBroken = `
+function aggregateTransactions(csv) {
+  const lines = csv.split('\\n').filter(l => l.trim().length > 0);
+  if (lines.length <= 1) return {};
+  const totals = {};
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(';');
+    const category = parts[2];
+    const amount = parseFloat(parts[3]); // missing .replace
+    totals[category] = (totals[category] || 0) + amount;
+  }
+  return totals;
+}
+`;
+  await runChallenge('CH-23', csvBroken, 0, 60);
+
+  // Forbidden token attempt
+  const csvCheating = `
+function aggregateTransactions(csv) {
+  return process.env.CATEGORIES;
+}
+`;
+  await runChallenge('CH-23', csvCheating, 0, 0);
+
+  console.log('\n[CH-24 — Idempotency Key Middleware]');
+  const idempCorrect = `
+function createIdempotencyStore() {
+  const cache = new Map();
+  function canonical(obj) {
+    if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+    if (Array.isArray(obj)) return '[' + obj.map(canonical).join(',') + ']';
+    const keys = Object.keys(obj).sort();
+    return '{' + keys.map(k => JSON.stringify(k) + ':' + canonical(obj[k])).join(',') + '}';
+  }
+  return {
+    handle(key, body, compute) {
+      const bodyKey = canonical(body);
+      const entry = cache.get(key);
+      if (entry) {
+        if (entry.bodyKey === bodyKey) return entry.response;
+        return { error: 'idempotency_key_conflict' };
+      }
+      const response = compute();
+      cache.set(key, { bodyKey: bodyKey, response: response });
+      return response;
+    }
+  };
+}
+`;
+  await runChallenge('CH-24', idempCorrect, 100, 100);
+
+  // Broken: doesn't check body equality (always returns cached if key exists)
+  const idempBroken = `
+function createIdempotencyStore() {
+  const cache = new Map();
+  return {
+    handle(key, body, compute) {
+      if (cache.has(key)) return cache.get(key);
+      const r = compute();
+      cache.set(key, r);
+      return r;
+    }
+  };
+}
+`;
+  await runChallenge('CH-24', idempBroken, 30, 85);
+
+  // Broken: re-runs compute every time
+  const idempAlwaysRun = `
+function createIdempotencyStore() {
+  return {
+    handle(key, body, compute) {
+      return compute();
+    }
+  };
+}
+`;
+  await runChallenge('CH-24', idempAlwaysRun, 10, 60);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {
     process.exit(1);

@@ -740,6 +740,259 @@ export const SEED_CHALLENGES: Challenge[] = [
     ],
     active: true,
   },
+  {
+    id: 'CH-22',
+    title: 'OAuth Sequence Diagram (Structured)',
+    description: 'Model the OAuth 2.0 Authorization Code flow as a structured sequence diagram. Submit a JSON object describing participants and each protocol step — the grader validates the protocol shape.',
+    instructions: '## Your Task\n\nA new engineer joined the IAM team and needs to learn how OAuth 2.0 Authorization Code flow works. Document the protocol as a structured sequence diagram by listing the **participants** and the **protocol steps** between them.\n\n### The protocol\n\nClassic OAuth 2.0 Authorization Code grant has 4 actors:\n- **user** (the human in the browser)\n- **client** (your web app)\n- **authServer** (the OAuth authorization server, e.g. Nubank IdP)\n- **resourceServer** (the API that holds protected data)\n\nAnd 6 protocol steps, in order:\n1. `user` → `client`: starts login\n2. `client` → `authServer`: sends `authorization_request`\n3. `authServer` → `client`: returns `authorization_code` after user approves\n4. `client` → `authServer`: exchanges code via `token_request`\n5. `authServer` → `client`: returns `access_token`\n6. `client` → `resourceServer`: calls API with `access_token`\n\n### Submission Format\n\nSubmit a JSON object with `participants` and `step1` through `step6`. Label strings must match EXACTLY (lowercase snake_case):\n\n```json\n{\n  "participants": ["user", "client", "authServer", "resourceServer"],\n  "step1": { "from": "user", "to": "client" },\n  "step2": { "from": "client", "to": "authServer", "label": "authorization_request" },\n  "step3": { "from": "authServer", "to": "client", "label": "authorization_code" },\n  "step4": { "from": "client", "to": "authServer", "label": "token_request" },\n  "step5": { "from": "authServer", "to": "client", "label": "access_token" },\n  "step6": { "from": "client", "to": "resourceServer", "label": "access_token" }\n}\n```\n\nThe grader checks:\n- `participants` (order-insensitive — must contain exactly the 4 actors)\n- Each `stepN` field (exact match on `from`, `to`, and `label`)\n\nExtra fields are ignored. Partial credit = (fields_correct / fields_total) × 100.',
+    tags: ['Tech Architecture', 'Security', 'Writing & Documentation'],
+    difficulty: 'intermediate',
+    timeMinutes: 25,
+    pointsBase: 170,
+    submissionFormat: 'JSON sequence diagram object',
+    evaluationMethod: 'automated-test',
+    rubric: {
+      criteria: [
+        { name: 'Participants', weight: 30, description: 'All four protocol actors present' },
+        { name: 'Message sequence', weight: 70, description: 'Six messages in the correct protocol order' },
+      ],
+      grader: {
+        type: 'structured',
+        config: {
+          expectedShape: 'object',
+          matchMode: 'exact',
+          answerKey: {
+            participants: ['authServer', 'client', 'resourceServer', 'user'],
+            step1: { from: 'user', to: 'client' },
+            step2: { from: 'client', to: 'authServer', label: 'authorization_request' },
+            step3: { from: 'authServer', to: 'client', label: 'authorization_code' },
+            step4: { from: 'client', to: 'authServer', label: 'token_request' },
+            step5: { from: 'authServer', to: 'client', label: 'access_token' },
+            step6: { from: 'client', to: 'resourceServer', label: 'access_token' },
+          },
+        },
+      },
+    },
+    antiCheatTier: 'T1',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'document',
+    hints: [
+      { level: 1, text: 'There are exactly 4 actors. Don\'t add a database, frontend, or load balancer — keep it to the protocol.' },
+      { level: 2, text: 'The browser/user starts the flow, but the browser is also "client-side" — treat the user as a separate actor from the client app.' },
+      { level: 3, text: 'The authServer talks to the client TWICE: once to return the auth code, then again to return the access token after the code exchange.' },
+    ],
+    active: true,
+  },
+  {
+    id: 'CH-23',
+    title: 'Transaction CSV Aggregator',
+    description: 'Parse a Brazilian-format CSV of credit card transactions and aggregate spending by category. Auto-graded with a sandboxed test suite.',
+    instructions: '## Your Task\n\nThe Cards team gives you a CSV export of a customer\'s monthly transactions in Brazilian format and asks you to summarize spending by category.\n\nWrite a function `aggregateTransactions(csv)` that:\n1. Parses the CSV (semicolon-separated, comma as decimal separator — Brazilian convention)\n2. Groups rows by `category`\n3. Returns an object mapping each category to the total amount spent (sum of `amount`), rounded to 2 decimal places\n\n### Input format\n\n```\ndate;description;category;amount\n2026-01-03;iFood;food;42,50\n2026-01-05;Uber;transport;18,90\n2026-01-07;iFood;food;67,30\n2026-01-12;Netflix;entertainment;55,90\n2026-01-15;Uber;transport;22,40\n```\n\nThe header row is always present. Amounts use comma as decimal separator. Refunds appear as negative values (e.g. `-15,00`).\n\n### Expected output for the example above\n\n```js\n{\n  food: 109.80,\n  transport: 41.30,\n  entertainment: 55.90\n}\n```\n\nKey order in the output object does NOT matter — the grader uses deep equality on values.\n\n### Edge cases the grader will test\n- Empty CSV (just header) → `{}`\n- Negative amounts (refunds) reduce category totals\n- Categories with a single transaction\n- Floating-point: round each total to 2 decimals (use `Math.round(total * 100) / 100`)\n- Trailing newline\n\n### Submission\n\n```javascript\nfunction aggregateTransactions(csv) {\n  // your code here\n}\n```\n\n### Sandbox restrictions\nNo `require`, `process`, network calls, or dynamic code execution. Pure JavaScript only.',
+    tags: ['Coding', 'Data Analysis', 'Financial Analysis'],
+    difficulty: 'intermediate',
+    timeMinutes: 35,
+    pointsBase: 200,
+    submissionFormat: 'JavaScript function',
+    evaluationMethod: 'automated-test',
+    rubric: {
+      criteria: [
+        { name: 'Test cases passing', weight: 100, description: '% of sandbox test cases that pass' },
+      ],
+      grader: {
+        type: 'code-sandbox',
+        config: {
+          language: 'javascript',
+          entrypoint: 'aggregateTransactions',
+          testCases: [
+            {
+              description: 'basic 5-row CSV',
+              input: ['date;description;category;amount\n2026-01-03;iFood;food;42,50\n2026-01-05;Uber;transport;18,90\n2026-01-07;iFood;food;67,30\n2026-01-12;Netflix;entertainment;55,90\n2026-01-15;Uber;transport;22,40'],
+              expected: { food: 109.80, transport: 41.30, entertainment: 55.90 },
+            },
+            {
+              description: 'empty CSV (header only)',
+              input: ['date;description;category;amount'],
+              expected: {},
+            },
+            {
+              description: 'single row',
+              input: ['date;description;category;amount\n2026-02-01;Spotify;entertainment;19,90'],
+              expected: { entertainment: 19.90 },
+            },
+            {
+              description: '[hidden] refunds (negative amounts)',
+              input: ['date;description;category;amount\n2026-01-03;iFood;food;42,50\n2026-01-04;iFood refund;food;-12,50\n2026-01-05;Uber;transport;18,90'],
+              expected: { food: 30.00, transport: 18.90 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] trailing newline',
+              input: ['date;description;category;amount\n2026-01-03;iFood;food;10,00\n'],
+              expected: { food: 10.00 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] floating-point rounding',
+              input: ['date;description;category;amount\n2026-01-01;A;food;0,10\n2026-01-02;B;food;0,20'],
+              expected: { food: 0.30 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] multiple categories with single tx each',
+              input: ['date;description;category;amount\n2026-01-01;A;a;1,00\n2026-01-02;B;b;2,00\n2026-01-03;C;c;3,00\n2026-01-04;D;d;4,00'],
+              expected: { a: 1.00, b: 2.00, c: 3.00, d: 4.00 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] large refund leaves category negative',
+              input: ['date;description;category;amount\n2026-01-01;Buy;shopping;100,00\n2026-01-02;Refund;shopping;-150,00'],
+              expected: { shopping: -50.00 },
+              hidden: true,
+            },
+          ],
+          timeoutMs: 1000,
+        },
+      },
+    },
+    antiCheatTier: 'T0',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'code',
+    hints: [
+      { level: 1, text: 'Split the CSV by `\\n`, drop the first line (header), then split each row by `;`.' },
+      { level: 2, text: 'Replace the comma in each amount with a dot before calling `parseFloat`: `parseFloat("42,50".replace(",", "."))`.' },
+      { level: 3, text: 'Use `Math.round(total * 100) / 100` to fix floating-point drift like `0.1 + 0.2 = 0.30000000000000004`.' },
+    ],
+    active: true,
+  },
+  {
+    id: 'CH-24',
+    title: 'Idempotency Key Middleware',
+    description: 'Build an in-memory idempotency cache for payment endpoints. Same key + same body returns the cached response; same key + different body fails. Auto-graded.',
+    instructions: '## Your Task\n\nNubank\'s Payments team needs an idempotency layer so retried payment requests don\'t double-charge customers. Build a function `createIdempotencyStore()` that returns an object with one method: `handle(key, body, compute)`.\n\n### Contract\n\n```javascript\nconst store = createIdempotencyStore();\n\n// First call: runs `compute()`, caches result, returns it\nconst r1 = store.handle("key-1", { amount: 100 }, () => ({ status: "ok", id: "tx-1" }));\n// → { status: "ok", id: "tx-1" }\n\n// Second call: same key + same body → returns cached result, does NOT re-run compute\nconst r2 = store.handle("key-1", { amount: 100 }, () => { throw new Error("must not run!"); });\n// → { status: "ok", id: "tx-1" }   (cached)\n\n// Third call: same key + DIFFERENT body → conflict\nconst r3 = store.handle("key-1", { amount: 200 }, () => ({ status: "ok" }));\n// → { error: "idempotency_key_conflict" }\n\n// New key: runs compute again\nconst r4 = store.handle("key-2", { amount: 50 }, () => ({ status: "ok", id: "tx-2" }));\n// → { status: "ok", id: "tx-2" }\n```\n\n### Rules\n1. Same `key` + same `body` (deep equality) → return cached response, do NOT call `compute`\n2. Same `key` + different `body` → return `{ error: "idempotency_key_conflict" }` exactly, do NOT call `compute`\n3. New `key` → call `compute()`, cache the result keyed by `(key, body)`, return the result\n4. The store is in-memory and per-instance — `createIdempotencyStore()` returns a fresh store each call\n5. Body comparison must be order-insensitive on keys: `{ a: 1, b: 2 }` equals `{ b: 2, a: 1 }`\n\n### Submission\n\n```javascript\nfunction createIdempotencyStore() {\n  // your code here\n  return {\n    handle(key, body, compute) {\n      // ...\n    }\n  };\n}\n```\n\n### Sandbox restrictions\nNo `require`, `process`, network calls, or dynamic code execution. Pure JavaScript only.',
+    tags: ['Coding', 'Tech Architecture', 'Financial Analysis'],
+    difficulty: 'advanced',
+    timeMinutes: 45,
+    pointsBase: 280,
+    submissionFormat: 'JavaScript function',
+    evaluationMethod: 'automated-test',
+    rubric: {
+      criteria: [
+        { name: 'Test cases passing', weight: 100, description: '% of sandbox test cases that pass' },
+      ],
+      grader: {
+        type: 'code-sandbox',
+        config: {
+          language: 'javascript',
+          entrypoint: 'createIdempotencyStore',
+          testCases: [
+            {
+              description: 'first call runs compute and returns result',
+              input: [],
+              expected: { status: 'ok', id: 'tx-1' },
+              harness: `
+                const store = createIdempotencyStore();
+                globalThis.__result = store.handle('key-1', { amount: 100 }, () => ({ status: 'ok', id: 'tx-1' }));
+              `,
+            },
+            {
+              description: 'second call with same key+body returns cached result',
+              input: [],
+              expected: { status: 'ok', id: 'tx-1' },
+              harness: `
+                const store = createIdempotencyStore();
+                store.handle('key-1', { amount: 100 }, () => ({ status: 'ok', id: 'tx-1' }));
+                globalThis.__result = store.handle('key-1', { amount: 100 }, () => ({ status: 'WRONG', id: 'WRONG' }));
+              `,
+            },
+            {
+              description: 'same key + different body returns conflict',
+              input: [],
+              expected: { error: 'idempotency_key_conflict' },
+              harness: `
+                const store = createIdempotencyStore();
+                store.handle('key-1', { amount: 100 }, () => ({ status: 'ok', id: 'tx-1' }));
+                globalThis.__result = store.handle('key-1', { amount: 200 }, () => ({ status: 'ok', id: 'tx-2' }));
+              `,
+            },
+            {
+              description: 'different keys are independent',
+              input: [],
+              expected: { status: 'ok', id: 'tx-2' },
+              harness: `
+                const store = createIdempotencyStore();
+                store.handle('key-1', { amount: 100 }, () => ({ status: 'ok', id: 'tx-1' }));
+                globalThis.__result = store.handle('key-2', { amount: 50 }, () => ({ status: 'ok', id: 'tx-2' }));
+              `,
+            },
+            {
+              description: '[hidden] body equality is order-insensitive on keys',
+              input: [],
+              expected: { status: 'ok', id: 'tx-3' },
+              hidden: true,
+              harness: `
+                const store = createIdempotencyStore();
+                store.handle('key-3', { a: 1, b: 2 }, () => ({ status: 'ok', id: 'tx-3' }));
+                globalThis.__result = store.handle('key-3', { b: 2, a: 1 }, () => ({ status: 'WRONG', id: 'WRONG' }));
+              `,
+            },
+            {
+              description: '[hidden] createIdempotencyStore() returns a fresh store each call',
+              input: [],
+              expected: { status: 'ok', id: 'fresh' },
+              hidden: true,
+              harness: `
+                const storeA = createIdempotencyStore();
+                storeA.handle('key-x', { v: 1 }, () => ({ status: 'ok', id: 'first' }));
+                const storeB = createIdempotencyStore();
+                globalThis.__result = storeB.handle('key-x', { v: 1 }, () => ({ status: 'ok', id: 'fresh' }));
+              `,
+            },
+            {
+              description: '[hidden] conflict path does not invoke compute',
+              input: [],
+              expected: { error: 'idempotency_key_conflict' },
+              hidden: true,
+              harness: `
+                const store = createIdempotencyStore();
+                store.handle('key-c', { amount: 100 }, () => ({ status: 'ok', id: 'c1' }));
+                let called = false;
+                const res = store.handle('key-c', { amount: 999 }, () => { called = true; return { status: 'ok' }; });
+                if (called) { globalThis.__result = { error: 'compute_was_called' }; }
+                else { globalThis.__result = res; }
+              `,
+            },
+            {
+              description: '[hidden] cached path does not invoke compute',
+              input: [],
+              expected: { status: 'ok', id: 'cached' },
+              hidden: true,
+              harness: `
+                const store = createIdempotencyStore();
+                store.handle('key-d', { amount: 10 }, () => ({ status: 'ok', id: 'cached' }));
+                let called = false;
+                const res = store.handle('key-d', { amount: 10 }, () => { called = true; return { status: 'WRONG' }; });
+                if (called) { globalThis.__result = { error: 'compute_was_called' }; }
+                else { globalThis.__result = res; }
+              `,
+            },
+          ],
+          timeoutMs: 1000,
+        },
+      },
+    },
+    antiCheatTier: 'T1',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'code',
+    hints: [
+      { level: 1, text: 'Use a Map keyed by the idempotency key. Store both the request body (for comparison) and the cached response.' },
+      { level: 2, text: 'For order-insensitive body equality, sort the keys before stringifying: `JSON.stringify(body, Object.keys(body).sort())`.' },
+      { level: 3, text: 'Watch out for the conflict path: it must NOT call compute, even though the key already exists. Check body match BEFORE calling compute.' },
+    ],
+    active: true,
+  },
 ];
 
 export const SEED_USERS: User[] = [
