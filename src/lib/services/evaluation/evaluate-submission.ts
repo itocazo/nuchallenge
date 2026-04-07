@@ -1,6 +1,7 @@
 import { inngest } from './inngest-client';
-import { evaluateWithRetry } from './ai-judge';
+import { dispatchEvaluation } from './dispatch';
 import { calculateScore, getLevelForPoints, evaluateBadges } from './scoring';
+import type { GraderConfig } from './auto-graders';
 import { getDb } from '@/db';
 import { attempts, challenges, users, pointTransactions } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
@@ -43,15 +44,19 @@ export const evaluateSubmission = inngest.createFunction(
       return a;
     });
 
-    // Step 3: Call Claude API for evaluation
-    const evaluation = await step.run('ai-evaluate', async () => {
-      return evaluateWithRetry({
+    // Step 3: Dispatch to the right evaluator (ai-judge / automated-test / hybrid)
+    const evaluation = await step.run('evaluate', async () => {
+      return dispatchEvaluation({
         challengeTitle: challenge.title,
         challengeDescription: challenge.description,
         instructions: challenge.instructions,
         submissionText,
-        rubric: challenge.rubric as { criteria: { name: string; weight: number; description: string }[] },
+        rubric: challenge.rubric as {
+          criteria: { name: string; weight: number; description: string }[];
+          grader?: GraderConfig;
+        },
         difficulty: challenge.difficulty,
+        evaluationMethod: challenge.evaluationMethod,
       });
     });
 
@@ -80,13 +85,20 @@ export const evaluateSubmission = inngest.createFunction(
 
     // Step 5: Save results and update user
     await step.run('save-results', async () => {
+      const evaluatorType: 'ai' | 'automated' | 'hybrid' =
+        evaluation.meta?.evaluator === 'ai-judge'
+          ? 'ai'
+          : evaluation.meta?.evaluator === 'hybrid'
+            ? 'hybrid'
+            : 'automated';
+
       // Update attempt with evaluation results
       await db
         .update(attempts)
         .set({
           status: scoring.qualityScore >= 40 ? 'completed' : 'failed',
           evaluationResult: evaluation,
-          evaluatorType: 'ai',
+          evaluatorType,
           pointsAwarded: scoring.totalPoints,
           qualityScore: scoring.qualityScore.toString(),
           completedAt: new Date(),

@@ -10,6 +10,17 @@ export interface RubricCriterion {
   description: string;
 }
 
+/**
+ * Optional auto-grader config attached to a challenge's rubric.
+ * When present, the dispatcher uses it instead of (or alongside) the AI judge.
+ * The shape is intentionally loose here — the grader-specific config is
+ * validated at runtime by each grader module.
+ */
+export interface ChallengeGraderConfig {
+  type: 'regex' | 'structured' | 'code-sandbox' | 'multi-choice';
+  config: Record<string, unknown>;
+}
+
 export interface Challenge {
   id: string;
   title: string;
@@ -21,7 +32,7 @@ export interface Challenge {
   pointsBase: number;
   submissionFormat: string;
   evaluationMethod: EvaluationMethod;
-  rubric: { criteria: RubricCriterion[] };
+  rubric: { criteria: RubricCriterion[]; grader?: ChallengeGraderConfig };
   antiCheatTier: AntiCheatTier;
   prerequisites: string[];
   producesAsset: boolean;

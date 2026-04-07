@@ -119,7 +119,12 @@ export async function evaluateWithClaude(
   input: EvaluationInput,
   options?: { detailed?: boolean }
 ): Promise<EvaluationOutput> {
-  const client = new Anthropic();
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  console.log('[ai-judge] ANTHROPIC_API_KEY present:', !!apiKey, 'length:', apiKey?.length ?? 0);
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY is not set in environment');
+  }
+  const client = new Anthropic({ apiKey });
   const model = getModelForDifficulty(input.difficulty);
   const prompt = buildEvaluationPrompt(input);
 

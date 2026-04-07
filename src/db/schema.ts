@@ -208,6 +208,21 @@ export const verificationTokens = pgTable('verification_tokens', {
 });
 
 // ============================================
+// PASSWORD RESET TOKENS
+// ============================================
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  token: text('token').unique().notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('idx_prt_token').on(table.token),
+  index('idx_prt_user').on(table.userId),
+]);
+
+// ============================================
 // RELATIONS
 // ============================================
 export const usersRelations = relations(users, ({ many }) => ({

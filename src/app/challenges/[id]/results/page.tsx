@@ -152,7 +152,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
               <span className="text-lg font-bold tabular-nums">+{pointsEarned} pts</span>
             </div>
             <p className="mt-1 text-xs text-amber-600">
-              {pointsEarned}/{pointsBase} possible points
+              {pointsEarned > pointsBase
+                ? `${pointsBase} base + ${pointsEarned - pointsBase} bonus`
+                : `${pointsEarned}/${pointsBase} base points`}
             </p>
             {(bonuses.quality > 0 || bonuses.speed > 0 || bonuses.streak > 0) && (
               <div className="mt-2 space-y-0.5 text-xs text-amber-600">

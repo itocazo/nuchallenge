@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
@@ -82,9 +83,17 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-gray-600">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-gray-600">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="mb-1.5 text-xs text-purple-600 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
