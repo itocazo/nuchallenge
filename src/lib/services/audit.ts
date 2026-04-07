@@ -20,7 +20,8 @@ type AuditEventType =
   | 'admin.challenge.created'
   | 'admin.challenge.updated'
   | 'admin.challenge.toggled'
-  | 'admin.attempt.score_override';
+  | 'admin.attempt.score_override'
+  | 'admin.attempt.bonus_awarded';
 
 interface AuditEntry {
   eventType: AuditEventType;

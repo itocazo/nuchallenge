@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/db';
-import { attempts, challenges, pointTransactions } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { attempts, challenges, pointTransactions, users } from '@/db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { jsonResponse, errorResponse, handleApiError, requireAuth } from '@/lib/api-utils';
 
 export async function GET(
@@ -62,18 +62,53 @@ export async function GET(
     const speedAmount = txs.find((b) => b.type === 'speed_bonus')?.amount ?? 0;
     const streakAmount = txs.find((b) => b.type === 'streak_bonus')?.amount ?? 0;
 
-    const adjustmentRows = txs.filter((b) => b.type === 'appeal_adjustment');
-    const adjustmentAmount = adjustmentRows.reduce((sum, row) => sum + row.amount, 0);
+    // Human-touched rows: corrective adjustments (appeal_adjustment) and
+    // additive reviewer credit (manual_bonus). We expose them as separate
+    // ledger lines so the UI can show "Reviewer bonus +5 by Maria" alongside
+    // "Reviewer adjustment -3 by Carlos".
     const tsOf = (row: { createdAt: Date | null }) =>
       row.createdAt ? new Date(row.createdAt).getTime() : 0;
-    const lastAdjustment = adjustmentRows.length
-      ? adjustmentRows.reduce((latest, row) => (tsOf(row) > tsOf(latest) ? row : latest))
-      : null;
-    // The override route stores reasons as "Admin score override: <reason>"
-    // — strip the prefix so the user-facing card shows just the reason.
-    const adjustmentReason = lastAdjustment?.description
-      ? lastAdjustment.description.replace(/^Admin score override:\s*/i, '')
-      : null;
+
+    const reviewerRows = txs
+      .filter((b) => b.type === 'appeal_adjustment' || b.type === 'manual_bonus')
+      .sort((a, b) => tsOf(a) - tsOf(b));
+
+    // Resolve reviewer names in one shot
+    const reviewerIds = Array.from(
+      new Set(reviewerRows.map((r) => r.awardedByUserId).filter((v): v is string => !!v))
+    );
+    const reviewerLookup = new Map<string, string>();
+    if (reviewerIds.length) {
+      const rows = await db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(inArray(users.id, reviewerIds));
+      for (const r of rows) reviewerLookup.set(r.id, r.name);
+    }
+
+    const stripPrefix = (s: string | null) =>
+      s ? s.replace(/^(Admin score override|Reviewer bonus|Reviewer adjustment):\s*/i, '') : null;
+
+    const reviewerEntries = reviewerRows.map((row) => ({
+      id: row.id,
+      kind: row.type === 'manual_bonus' ? ('bonus' as const) : ('adjustment' as const),
+      amount: row.amount,
+      reason: stripPrefix(row.description),
+      reviewerName: row.awardedByUserId ? reviewerLookup.get(row.awardedByUserId) ?? null : null,
+      createdAt: row.createdAt,
+    }));
+
+    const adjustmentAmount = reviewerRows
+      .filter((r) => r.type === 'appeal_adjustment')
+      .reduce((sum, row) => sum + row.amount, 0);
+    const manualBonusAmount = reviewerRows
+      .filter((r) => r.type === 'manual_bonus')
+      .reduce((sum, row) => sum + row.amount, 0);
+
+    // Backwards-compat: keep humanAdjustment as the most recent reviewer
+    // touch so the existing card keeps rendering during the cutover.
+    const lastReviewerRow = reviewerRows.length ? reviewerRows[reviewerRows.length - 1] : null;
+    const humanAdjustmentReason = stripPrefix(lastReviewerRow?.description ?? null);
 
     const bonusMap = {
       quality: qualityAmount,
@@ -86,10 +121,16 @@ export async function GET(
       qualityBonus: qualityAmount,
       speedBonus: speedAmount,
       streakBonus: streakAmount,
-      humanAdjustment: adjustmentAmount,
-      humanAdjustmentReason: adjustmentReason,
+      humanAdjustment: adjustmentAmount + manualBonusAmount,
+      humanAdjustmentReason,
+      reviewerEntries,
       total:
-        baseAmount + qualityAmount + speedAmount + streakAmount + adjustmentAmount,
+        baseAmount +
+        qualityAmount +
+        speedAmount +
+        streakAmount +
+        adjustmentAmount +
+        manualBonusAmount,
       challengeMaxBase: challenge?.pointsBase ?? null,
     };
 

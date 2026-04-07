@@ -109,6 +109,7 @@ export async function PATCH(
         amount: pointsDiff,
         type: 'appeal_adjustment',
         description: `Admin score override: ${body.reason}`,
+        awardedByUserId: actor.id,
       });
 
       // Update user total points

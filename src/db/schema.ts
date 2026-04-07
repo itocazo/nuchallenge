@@ -120,9 +120,21 @@ export const pointTransactions = pgTable('point_transactions', {
   attemptId: uuid('attempt_id').references(() => attempts.id),
   amount: integer('amount').notNull(),
   type: text('type', {
-    enum: ['challenge_complete', 'quality_bonus', 'speed_bonus', 'streak_bonus', 'appeal_adjustment'],
+    enum: [
+      'challenge_complete',
+      'quality_bonus',
+      'speed_bonus',
+      'streak_bonus',
+      'appeal_adjustment',
+      // Human-awarded credit for things the auto-grader couldn't see.
+      // Distinct from appeal_adjustment (which is corrective).
+      'manual_bonus',
+    ],
   }).notNull(),
   description: text('description'),
+  // Reviewer attribution: which user awarded this transaction (admin or
+  // evaluator). Null for system-generated rows like challenge_complete.
+  awardedByUserId: uuid('awarded_by_user_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => [
   index('idx_point_transactions_user').on(table.userId),

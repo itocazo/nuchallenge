@@ -81,6 +81,22 @@ export const adminScoreOverrideSchema = z.object({
   reason: z.string().min(1).max(500),
 });
 
+/**
+ * Additive bonus from a human reviewer. Use this when an admin or
+ * evaluator wants to award discretionary credit for something the
+ * auto-grader couldn't see (novel framing, elegant approach, etc.)
+ * — without rewriting the AI's score.
+ *
+ * `kind` distinguishes:
+ *   - 'bonus' (positive credit, written as type='manual_bonus')
+ *   - 'adjustment' (corrective, can be negative, written as type='appeal_adjustment')
+ */
+export const adminAttemptBonusSchema = z.object({
+  amount: z.number().int().refine((n) => n !== 0, 'amount must be non-zero'),
+  reason: z.string().min(10, 'reason must be at least 10 characters').max(500),
+  kind: z.enum(['bonus', 'adjustment']).default('bonus'),
+});
+
 // ── Audit ──────────────────────────────────────────
 
 export const adminAuditLogQuerySchema = z.object({

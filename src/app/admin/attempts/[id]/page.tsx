@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { useApi, apiPatch } from '@/lib/hooks/use-api';
+import { useApi, apiPatch, apiPost } from '@/lib/hooks/use-api';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import { ArrowLeft } from 'lucide-react';
 
@@ -47,12 +47,41 @@ export default function AdminAttemptDetailPage({ params }: { params: Promise<{ i
   const [saving, setSaving] = useState(false);
   const [overrideError, setOverrideError] = useState('');
 
+  // Additive bonus form state — distinct from override (which REPLACES the
+  // score). Use this to award discretionary credit on top of the AI's verdict.
+  const [bonusAmount, setBonusAmount] = useState('');
+  const [bonusReason, setBonusReason] = useState('');
+  const [bonusKind, setBonusKind] = useState<'bonus' | 'adjustment'>('bonus');
+  const [bonusSaving, setBonusSaving] = useState(false);
+  const [bonusError, setBonusError] = useState('');
+
   if (loading || !data) {
     return <div className="h-64 animate-pulse rounded-xl border border-gray-200 bg-gray-50" />;
   }
 
   const { attempt, transactions } = data;
   const canOverride = attempt.status === 'completed' || attempt.status === 'failed';
+
+  async function handleBonus(e: React.FormEvent) {
+    e.preventDefault();
+    setBonusSaving(true);
+    setBonusError('');
+    try {
+      await apiPost(`/api/admin/attempts/${id}/bonus`, {
+        amount: Number(bonusAmount),
+        reason: bonusReason,
+        kind: bonusKind,
+      });
+      refetch();
+      setBonusAmount('');
+      setBonusReason('');
+      setBonusKind('bonus');
+    } catch (err) {
+      setBonusError(err instanceof Error ? err.message : 'Failed to award bonus');
+    } finally {
+      setBonusSaving(false);
+    }
+  }
 
   async function handleOverride(e: React.FormEvent) {
     e.preventDefault();
@@ -213,6 +242,63 @@ export default function AdminAttemptDetailPage({ params }: { params: Promise<{ i
                   className="shrink-0 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Override'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Additive Reviewer Bonus */}
+      {canOverride && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-5">
+          <h3 className="mb-1 text-sm font-semibold text-emerald-800">Award Reviewer Credit</h3>
+          <p className="mb-3 text-xs text-emerald-700/80">
+            Add discretionary points without rewriting the AI score. Use this for things the
+            auto-grader couldn&apos;t see (novel framing, elegant approach, etc.). Pick
+            &quot;Adjustment&quot; for corrective negative deltas.
+          </p>
+          {bonusError && <p className="mb-2 text-sm text-red-600">{bonusError}</p>}
+          <form onSubmit={handleBonus} className="grid gap-3 sm:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">Kind</label>
+              <select
+                value={bonusKind}
+                onChange={(e) => setBonusKind(e.target.value as 'bonus' | 'adjustment')}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+              >
+                <option value="bonus">Bonus (positive)</option>
+                <option value="adjustment">Adjustment (+/-)</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">Amount</label>
+              <input
+                type="number"
+                required
+                value={bonusAmount}
+                onChange={(e) => setBonusAmount(e.target.value)}
+                placeholder={bonusKind === 'bonus' ? '+10' : '-5'}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs text-gray-500">Reason (min 10 chars)</label>
+              <div className="flex gap-2">
+                <input
+                  required
+                  minLength={10}
+                  value={bonusReason}
+                  onChange={(e) => setBonusReason(e.target.value)}
+                  placeholder="Why this reviewer credit?"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+                />
+                <button
+                  type="submit"
+                  disabled={bonusSaving}
+                  className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {bonusSaving ? 'Saving...' : 'Award'}
                 </button>
               </div>
             </div>

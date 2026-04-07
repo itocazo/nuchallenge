@@ -32,6 +32,14 @@ interface ResultData {
     streakBonus: number;
     humanAdjustment: number;
     humanAdjustmentReason: string | null;
+    reviewerEntries?: Array<{
+      id: string;
+      kind: 'bonus' | 'adjustment';
+      amount: number;
+      reason: string | null;
+      reviewerName: string | null;
+      createdAt: string | null;
+    }>;
     total: number;
     challengeMaxBase: number | null;
   };
@@ -143,16 +151,31 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   }
   if (bonuses.speed > 0) ledger.push({ label: 'Speed bonus', amount: bonuses.speed, hint: 'Finished early' });
   if (bonuses.streak > 0) ledger.push({ label: 'Streak bonus', amount: bonuses.streak, hint: 'Daily streak' });
-  // Human adjustment from admin/evaluator override flow. Can be positive
-  // (extra credit for things the AI missed) or negative (correction).
-  const humanAdjustment = data?.scoreBreakdown?.humanAdjustment ?? 0;
-  const humanAdjustmentReason = data?.scoreBreakdown?.humanAdjustmentReason;
-  if (humanAdjustment !== 0) {
-    ledger.push({
-      label: humanAdjustment > 0 ? 'Reviewer bonus' : 'Reviewer adjustment',
-      amount: humanAdjustment,
-      hint: humanAdjustmentReason ?? 'Awarded by a human reviewer',
-    });
+  // Human-touched rows from admin/evaluator review. Each reviewer entry
+  // is its own ledger line so the user sees who awarded what and why.
+  const reviewerEntries = data?.scoreBreakdown?.reviewerEntries ?? [];
+  if (reviewerEntries.length > 0) {
+    for (const entry of reviewerEntries) {
+      const label = entry.kind === 'bonus' ? 'Reviewer bonus' : 'Reviewer adjustment';
+      const attribution = entry.reviewerName ? ` by ${entry.reviewerName}` : '';
+      ledger.push({
+        label,
+        amount: entry.amount,
+        hint: `${entry.reason ?? 'Awarded by a human reviewer'}${attribution}`,
+      });
+    }
+  } else {
+    // Backwards-compat for older attempts whose API still only sends the
+    // aggregate humanAdjustment field.
+    const humanAdjustment = data?.scoreBreakdown?.humanAdjustment ?? 0;
+    const humanAdjustmentReason = data?.scoreBreakdown?.humanAdjustmentReason;
+    if (humanAdjustment !== 0) {
+      ledger.push({
+        label: humanAdjustment > 0 ? 'Reviewer bonus' : 'Reviewer adjustment',
+        amount: humanAdjustment,
+        hint: humanAdjustmentReason ?? 'Awarded by a human reviewer',
+      });
+    }
   }
 
   const feedback = evaluation?.feedback ?? 'Your submission demonstrates a strong grasp of the core concepts. The structure is clear and the analysis shows critical thinking beyond surface-level AI output. To improve further, consider adding more specific metrics and quantifying your assertions where possible.';
@@ -203,9 +226,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
               </span>
             </div>
             <dl className="divide-y divide-amber-100">
-              {ledger.map((row) => (
+              {ledger.map((row, idx) => (
                 <div
-                  key={row.label}
+                  key={`${row.label}-${idx}`}
                   className="flex items-baseline justify-between gap-3 px-4 py-2"
                 >
                   <dt className="flex flex-col">
