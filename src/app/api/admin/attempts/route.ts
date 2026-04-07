@@ -3,11 +3,12 @@ import { db } from '@/db';
 import { attempts, users, challenges } from '@/db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { adminAttemptListQuerySchema } from '@/lib/validators/admin';
-import { jsonResponse, handleApiError, requireAdmin } from '@/lib/api-utils';
+import { jsonResponse, handleApiError, requireEvaluator } from '@/lib/api-utils';
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin();
+    // Evaluators need to browse the attempt queue to pick which ones to review.
+    await requireEvaluator();
     const params = Object.fromEntries(req.nextUrl.searchParams);
     const query = adminAttemptListQuerySchema.parse(params);
 

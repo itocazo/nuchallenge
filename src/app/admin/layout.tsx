@@ -35,10 +35,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const roles = session?.user?.platformRole ?? [];
-  if (!roles.includes('admin')) {
+  const isAdmin = roles.includes('admin');
+  const isEvaluator = roles.includes('evaluator');
+  if (!isAdmin && !isEvaluator) {
     router.replace('/');
     return null;
   }
+
+  // Evaluators get a reduced nav: just the review queue.
+  // Admins see everything.
+  const visibleNav = isAdmin
+    ? NAV
+    : NAV.filter((n) => n.href === '/admin/attempts');
 
   return (
     <div className="flex min-h-[calc(100vh-6rem)] gap-6">
@@ -52,9 +60,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Back to platform
           </Link>
           <div className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-            Admin
+            {isAdmin ? 'Admin' : 'Evaluator'}
           </div>
-          {NAV.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             const isActive = item.exact
               ? pathname === item.href

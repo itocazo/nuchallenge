@@ -31,18 +31,19 @@ const LEVEL_THRESHOLDS = [
 export function calculateScore(input: ScoringInput): ScoringOutput {
   const { evaluation, challengePointsBase, timeMinutes, actualMinutes, currentStreak, hintsUsed } = input;
 
-  // Base points: proportional to quality score
+  // Base points: proportional to quality score.
+  // The auto-evaluator's score IS the quality signal — we don't add a
+  // separate "quality bonus" tier on top, because that would double-count
+  // the same signal from the same source. Quality bonuses now come
+  // exclusively from human reviewers via the admin/evaluator override flow,
+  // which writes appeal_adjustment transactions.
   const qualityScore = evaluation.overallScore;
   const basePoints = Math.round(challengePointsBase * (qualityScore / 100));
+  const qualityBonus = 0;
 
-  // Quality bonus: extra 20% for scores >= 90
-  const qualityBonus = qualityScore >= 90
-    ? Math.round(challengePointsBase * 0.2)
-    : qualityScore >= 80
-      ? Math.round(challengePointsBase * 0.1)
-      : 0;
-
-  // Speed bonus: 15% if completed in under 60% of estimated time
+  // Speed bonus: orthogonal signal (time spent). The AI judge can't see
+  // how long the user spent, so this earns its own line.
+  // 15% if completed in under 60% of estimated time, 5% if under 80%.
   const timeRatio = actualMinutes / timeMinutes;
   const speedBonus = timeRatio <= 0.6
     ? Math.round(challengePointsBase * 0.15)
@@ -50,7 +51,8 @@ export function calculateScore(input: ScoringInput): ScoringOutput {
       ? Math.round(challengePointsBase * 0.05)
       : 0;
 
-  // Streak bonus: 5% per day of streak, max 25%
+  // Streak bonus: orthogonal signal (consistency over days).
+  // 5% per day of streak, max 25%.
   const streakMultiplier = Math.min(currentStreak * 0.05, 0.25);
   const streakBonus = Math.round(challengePointsBase * streakMultiplier);
 

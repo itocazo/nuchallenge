@@ -49,13 +49,31 @@ export async function GET(
       .from(pointTransactions)
       .where(eq(pointTransactions.attemptId, id));
 
-    // Real breakdown: base (challenge_complete) + each bonus type.
-    // These always sum to pointsAwarded, so the UI can render a ledger
-    // that actually ties out instead of fabricating a "bonus = total - max" line.
+    // Real breakdown: base (challenge_complete) + each bonus type +
+    // any human-applied appeal_adjustment rows. These always sum to
+    // pointsAwarded, so the UI can render a ledger that actually ties out.
+    //
+    // Note: appeal_adjustment rows are produced by admin/evaluator score
+    // overrides and there can be more than one per attempt (multiple
+    // reviewers, or a follow-up adjustment). We sum them and surface the
+    // most recent reason.
     const baseAmount = txs.find((b) => b.type === 'challenge_complete')?.amount ?? 0;
     const qualityAmount = txs.find((b) => b.type === 'quality_bonus')?.amount ?? 0;
     const speedAmount = txs.find((b) => b.type === 'speed_bonus')?.amount ?? 0;
     const streakAmount = txs.find((b) => b.type === 'streak_bonus')?.amount ?? 0;
+
+    const adjustmentRows = txs.filter((b) => b.type === 'appeal_adjustment');
+    const adjustmentAmount = adjustmentRows.reduce((sum, row) => sum + row.amount, 0);
+    const tsOf = (row: { createdAt: Date | null }) =>
+      row.createdAt ? new Date(row.createdAt).getTime() : 0;
+    const lastAdjustment = adjustmentRows.length
+      ? adjustmentRows.reduce((latest, row) => (tsOf(row) > tsOf(latest) ? row : latest))
+      : null;
+    // The override route stores reasons as "Admin score override: <reason>"
+    // — strip the prefix so the user-facing card shows just the reason.
+    const adjustmentReason = lastAdjustment?.description
+      ? lastAdjustment.description.replace(/^Admin score override:\s*/i, '')
+      : null;
 
     const bonusMap = {
       quality: qualityAmount,
@@ -68,7 +86,10 @@ export async function GET(
       qualityBonus: qualityAmount,
       speedBonus: speedAmount,
       streakBonus: streakAmount,
-      total: baseAmount + qualityAmount + speedAmount + streakAmount,
+      humanAdjustment: adjustmentAmount,
+      humanAdjustmentReason: adjustmentReason,
+      total:
+        baseAmount + qualityAmount + speedAmount + streakAmount + adjustmentAmount,
       challengeMaxBase: challenge?.pointsBase ?? null,
     };
 

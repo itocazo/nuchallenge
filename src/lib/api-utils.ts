@@ -48,6 +48,28 @@ export async function requireAdmin() {
   return user;
 }
 
+/**
+ * Allow either an admin or an evaluator. Evaluators are non-admin users
+ * trusted to review submissions and adjust scores beyond what the
+ * auto-grader produced. Admins inherit all evaluator capabilities.
+ *
+ * Returns { user, roles } so callers can branch on the actor's roles
+ * (e.g. for audit metadata or capability gating).
+ */
+export async function requireEvaluator() {
+  const user = await requireAuth();
+  const [dbUser] = await db
+    .select({ platformRole: users.platformRole })
+    .from(users)
+    .where(eq(users.id, user.id!))
+    .limit(1);
+  const roles = dbUser?.platformRole ?? [];
+  if (!roles.includes('admin') && !roles.includes('evaluator')) {
+    throw new AuthError('Forbidden');
+  }
+  return { user, roles };
+}
+
 export class AuthError extends Error {
   constructor(message = 'Unauthorized') {
     super(message);

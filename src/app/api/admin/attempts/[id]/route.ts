@@ -3,7 +3,12 @@ import { db } from '@/db';
 import { attempts, users, challenges, pointTransactions } from '@/db/schema';
 import { eq, desc, sql } from 'drizzle-orm';
 import { adminScoreOverrideSchema } from '@/lib/validators/admin';
-import { jsonResponse, errorResponse, handleApiError, requireAdmin } from '@/lib/api-utils';
+import {
+  jsonResponse,
+  errorResponse,
+  handleApiError,
+  requireEvaluator,
+} from '@/lib/api-utils';
 import { logAuditEvent } from '@/lib/services/audit';
 
 export async function GET(
@@ -11,7 +16,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    // Evaluators need to read attempts to review them; admins inherit.
+    await requireEvaluator();
     const { id } = await params;
 
     const [attempt] = await db
@@ -63,7 +69,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const admin = await requireAdmin();
+    // Both admins and evaluators may override scores. The audit log
+    // captures actorId so we always know who made the call.
+    const { user: actor, roles: actorRoles } = await requireEvaluator();
     const { id } = await params;
     const body = adminScoreOverrideSchema.parse(await req.json());
 
@@ -111,7 +119,7 @@ export async function PATCH(
 
     await logAuditEvent({
       eventType: 'admin.attempt.score_override',
-      actorId: admin.id,
+      actorId: actor.id,
       targetType: 'attempt',
       targetId: id,
       metadata: {
@@ -120,6 +128,7 @@ export async function PATCH(
         oldPoints,
         newPoints: body.pointsAwarded,
         reason: body.reason,
+        actorRoles,
       },
     });
 

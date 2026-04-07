@@ -30,6 +30,8 @@ interface ResultData {
     qualityBonus: number;
     speedBonus: number;
     streakBonus: number;
+    humanAdjustment: number;
+    humanAdjustmentReason: string | null;
     total: number;
     challengeMaxBase: number | null;
   };
@@ -136,11 +138,22 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     ledger.push({
       label: 'Quality bonus',
       amount: bonuses.quality,
-      hint: overallScore >= 90 ? 'Score ≥ 90' : 'Score ≥ 80',
+      hint: 'Awarded by reviewer',
     });
   }
   if (bonuses.speed > 0) ledger.push({ label: 'Speed bonus', amount: bonuses.speed, hint: 'Finished early' });
   if (bonuses.streak > 0) ledger.push({ label: 'Streak bonus', amount: bonuses.streak, hint: 'Daily streak' });
+  // Human adjustment from admin/evaluator override flow. Can be positive
+  // (extra credit for things the AI missed) or negative (correction).
+  const humanAdjustment = data?.scoreBreakdown?.humanAdjustment ?? 0;
+  const humanAdjustmentReason = data?.scoreBreakdown?.humanAdjustmentReason;
+  if (humanAdjustment !== 0) {
+    ledger.push({
+      label: humanAdjustment > 0 ? 'Reviewer bonus' : 'Reviewer adjustment',
+      amount: humanAdjustment,
+      hint: humanAdjustmentReason ?? 'Awarded by a human reviewer',
+    });
+  }
 
   const feedback = evaluation?.feedback ?? 'Your submission demonstrates a strong grasp of the core concepts. The structure is clear and the analysis shows critical thinking beyond surface-level AI output. To improve further, consider adding more specific metrics and quantifying your assertions where possible.';
 
@@ -202,8 +215,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                     )}
                   </dt>
                   <dd className="text-sm font-semibold tabular-nums text-amber-900">
-                    {row.label === 'Base score' ? '' : '+'}
-                    {row.amount}
+                    {row.label === 'Base score'
+                      ? row.amount
+                      : row.amount >= 0
+                        ? `+${row.amount}`
+                        : row.amount /* keeps the leading minus sign */}
                   </dd>
                 </div>
               ))}
