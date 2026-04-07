@@ -9,6 +9,20 @@ import { inngest } from '@/lib/services/evaluation/inngest-client';
 import { dispatchEvaluation } from '@/lib/services/evaluation/dispatch';
 import { calculateScore, getLevelForPoints } from '@/lib/services/evaluation/scoring';
 
+// Claude ai-judge calls can take 10-15s; bump Vercel function timeout
+// (Hobby plan max is 60s for Node runtime).
+export const maxDuration = 60;
+
+// Feature flag: only use Inngest when explicitly opted in AND a plausible
+// Inngest Cloud event key is configured. Otherwise we run evaluation inline
+// so the route returns a real result (or a real error) to the user.
+function shouldUseInngest(): boolean {
+  if (process.env.USE_INNGEST !== 'true') return false;
+  const key = process.env.INNGEST_EVENT_KEY ?? '';
+  // Real Inngest Cloud event keys are long; local-dev placeholders are short.
+  return key.length >= 32;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -54,13 +68,24 @@ export async function POST(
       metadata: { challengeId: id, textLength: body.submissionText?.length ?? 0 },
     });
 
-    // Trigger evaluation
-    if (process.env.NODE_ENV === 'development') {
-      // In dev mode, run evaluation inline so errors propagate
+    // Trigger evaluation. Inngest is opt-in (requires a real Inngest Cloud
+    // event key AND USE_INNGEST=true). Otherwise run inline so the Vercel
+    // function returns a real result and errors surface to the user instead
+    // of the attempt silently staying in 'evaluating' forever.
+    if (shouldUseInngest()) {
+      await inngest.send({
+        name: 'submission/created',
+        data: {
+          attemptId: body.attemptId,
+          challengeId: id,
+          submissionText: body.submissionText ?? '',
+        },
+      });
+    } else {
       try {
         await runEvaluationInline(body.attemptId, id, body.submissionText ?? '', user.id!);
       } catch (evalError) {
-        console.error('Dev evaluation error:', evalError);
+        console.error('Evaluation error:', evalError);
         // Mark attempt as failed so UI stops polling
         await db
           .update(attempts)
@@ -77,15 +102,6 @@ export async function POST(
           500
         );
       }
-    } else {
-      await inngest.send({
-        name: 'submission/created',
-        data: {
-          attemptId: body.attemptId,
-          challengeId: id,
-          submissionText: body.submissionText ?? '',
-        },
-      });
     }
 
     return jsonResponse({
