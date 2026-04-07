@@ -9,6 +9,8 @@ import DifficultyBadge from '@/components/ui/DifficultyBadge';
 import TagPill from '@/components/ui/TagPill';
 import Timer from '@/components/workspace/Timer';
 import MarkdownEditor from '@/components/workspace/MarkdownEditor';
+import CodeEditor from '@/components/workspace/CodeEditor';
+import VisibleTestCases from '@/components/workspace/VisibleTestCases';
 import {
   ArrowLeft, Send, ChevronDown, ChevronUp,
   Lightbulb, FileText, AlertCircle, Loader2,
@@ -121,6 +123,18 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
   const hints = challenge.hints ?? [];
   const rubricCriteria = seedChallenge?.rubric?.criteria ?? [];
 
+  // Pick the editor by grader type. code-sandbox challenges get a real
+  // code editor with tab-handling, line numbers, and a visible-tests panel;
+  // everything else keeps the markdown editor it's always had.
+  const grader = seedChallenge?.rubric?.grader;
+  const isCodeSandbox = grader?.type === 'code-sandbox';
+  const entrypoint = isCodeSandbox
+    ? ((grader!.config as { entrypoint?: string }).entrypoint ?? 'solve')
+    : null;
+  const codeStarter = entrypoint
+    ? `function ${entrypoint}(/* args */) {\n  // your code here\n}\n`
+    : '';
+
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -147,11 +161,23 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Timer totalMinutes={timeMinutes} />
-          <MarkdownEditor
-            value={submission}
-            onChange={setSubmission}
-            placeholder={`Write your submission for "${title}"...\n\nMarkdown is supported. Be thorough — the AI evaluator will check against ${rubricCriteria.length} criteria.`}
-          />
+          {isCodeSandbox ? (
+            <CodeEditor
+              value={submission}
+              onChange={setSubmission}
+              placeholder={codeStarter}
+              language="javascript"
+              onSubmit={() => {
+                if (submission.trim() && !isSubmitting) setShowConfirm(true);
+              }}
+            />
+          ) : (
+            <MarkdownEditor
+              value={submission}
+              onChange={setSubmission}
+              placeholder={`Write your submission for "${title}"...\n\nMarkdown is supported. Be thorough — the AI evaluator will check against ${rubricCriteria.length} criteria.`}
+            />
+          )}
 
           {submitError && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -204,6 +230,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          {isCodeSandbox && <VisibleTestCases grader={grader} />}
           <div className="rounded-xl border border-gray-200 bg-white">
             <button
               onClick={() => setShowBrief(!showBrief)}
