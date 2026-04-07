@@ -124,6 +124,141 @@ function formatBRL(value) {
 `;
   await runChallenge('CH-13', cheating, 0, 0);
 
+  console.log('\n[CH-19 — Pix Key Validator]');
+  // Correct implementation covering all Pix key types
+  const pixCorrect = `
+function classifyPixKey(key) {
+  if (typeof key !== 'string' || key.length === 0) return 'invalid';
+  if (/^\\d{11}$/.test(key)) return 'cpf';
+  if (/^\\d{14}$/.test(key)) return 'cnpj';
+  if (/^\\+55\\d{10,11}$/.test(key)) return 'phone';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(key)) return 'random';
+  if (/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(key)) return 'email';
+  return 'invalid';
+}
+`;
+  await runChallenge('CH-19', pixCorrect, 100, 100);
+
+  // Naive impl: misses the UUID v4 version check + phone +55 prefix
+  const pixNaive = `
+function classifyPixKey(key) {
+  if (/^\\d{11}$/.test(key)) return 'cpf';
+  if (/^\\d{14}$/.test(key)) return 'cnpj';
+  if (key.includes('@')) return 'email';
+  if (key.length === 36) return 'random';
+  return 'invalid';
+}
+`;
+  await runChallenge('CH-19', pixNaive, 30, 85);
+
+  // Broken: always returns 'cpf'
+  const pixBroken = `
+function classifyPixKey(key) {
+  return 'cpf';
+}
+`;
+  await runChallenge('CH-19', pixBroken, 0, 20);
+
+  console.log('\n[CH-20 — SQL Injection Triage]');
+  // All correct answers
+  await runChallenge(
+    'CH-20',
+    JSON.stringify({
+      answers: {
+        q1: 'vulnerable',
+        q2: 'safe',
+        q3: 'safe',
+        q4: 'vulnerable',
+        q5: 'vulnerable',
+        q6: ['parameterized-queries', 'allowlist-identifiers'],
+      },
+    }),
+    100,
+    100
+  );
+  // Case-insensitive single-select
+  await runChallenge(
+    'CH-20',
+    JSON.stringify({
+      answers: {
+        q1: 'VULNERABLE',
+        q2: 'SAFE',
+        q3: 'safe',
+        q4: 'vulnerable',
+        q5: 'vulnerable',
+        q6: ['allowlist-identifiers', 'parameterized-queries'], // reverse order
+      },
+    }),
+    100,
+    100
+  );
+  // All wrong
+  await runChallenge(
+    'CH-20',
+    JSON.stringify({
+      answers: {
+        q1: 'safe',
+        q2: 'vulnerable',
+        q3: 'vulnerable',
+        q4: 'safe',
+        q5: 'safe',
+        q6: ['escape-quotes'],
+      },
+    }),
+    0,
+    5
+  );
+  // Mixed: 3 right on snippets, q6 wrong → (3/5)*70 + 0 = 42
+  await runChallenge(
+    'CH-20',
+    JSON.stringify({
+      answers: {
+        q1: 'vulnerable',
+        q2: 'safe',
+        q3: 'safe',
+        q4: 'safe',
+        q5: 'safe',
+        q6: ['escape-quotes'],
+      },
+    }),
+    30,
+    60
+  );
+
+  console.log('\n[CH-21 — OpenAPI Contract Designer]');
+  // All correct
+  await runChallenge(
+    'CH-21',
+    JSON.stringify({
+      method: 'post',
+      path: '/v1/rewards/redeem',
+      operationId: 'redeemReward',
+      security: ['bearerAuth'],
+      requestBodyRequired: ['rewardId', 'idempotencyKey'],
+      responseStatuses: ['200', '400', '401', '409'],
+      successFields: ['transactionId', 'pointsSpent'],
+    }),
+    100,
+    100
+  );
+  // Missing 401 + wrong operationId
+  await runChallenge(
+    'CH-21',
+    JSON.stringify({
+      method: 'post',
+      path: '/v1/rewards/redeem',
+      operationId: 'postRedeem',
+      security: ['bearerAuth'],
+      requestBodyRequired: ['rewardId', 'idempotencyKey'],
+      responseStatuses: ['200', '400', '409'],
+      successFields: ['transactionId', 'pointsSpent'],
+    }),
+    60,
+    80
+  );
+  // Empty submission
+  await runChallenge('CH-21', '{}', 0, 5);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {
     process.exit(1);

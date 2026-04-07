@@ -12,7 +12,7 @@ async function main() {
   const sql = neon(process.env.DATABASE_URL!);
   const db = drizzle(sql, { schema });
 
-  const ids = ['CH-07', 'CH-09', 'CH-13'];
+  const ids = ['CH-07', 'CH-09', 'CH-13', 'CH-19', 'CH-20', 'CH-21'];
   const rows = await db
     .select({
       id: schema.challenges.id,

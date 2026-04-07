@@ -5,9 +5,10 @@ import { SEED_CHALLENGES, SEED_USERS } from '@/lib/data';
 import { getInitials, formatPoints } from '@/lib/utils';
 import DifficultyBadge from '@/components/ui/DifficultyBadge';
 import TagPill from '@/components/ui/TagPill';
+import { signOut } from 'next-auth/react';
 import {
   Trophy, Flame, Target, Star, Award,
-  TrendingUp, Calendar, CheckCircle2, Clock, Loader2,
+  TrendingUp, Calendar, CheckCircle2, Clock, Loader2, LogOut,
 } from 'lucide-react';
 
 interface ProfileData {
@@ -81,7 +82,16 @@ export default function ProfilePage() {
             {getInitials(name)}
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">{name}</h1>
+            <div className="flex items-start justify-between">
+              <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">{name}</h1>
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign out
+              </button>
+            </div>
             <p className="text-sm text-gray-500">{title} · {department}</p>
             <div className="mt-3 flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-purple-600">

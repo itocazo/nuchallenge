@@ -15,6 +15,10 @@ import {
   gradeCodeSandbox,
   type CodeSandboxGraderConfig,
 } from './code-sandbox-grader';
+import {
+  gradeMultiChoice,
+  type MultiChoiceGraderConfig,
+} from './multi-choice-grader';
 import type { AutoGraderResult, GraderConfig } from './types';
 
 export type { GraderConfig, AutoGraderResult } from './types';
@@ -38,8 +42,10 @@ export function runAutoGrader(
         graderConfig.config as unknown as CodeSandboxGraderConfig
       );
     case 'multi-choice':
-      // Reserved for a later session
-      throw new Error('multi-choice grader not yet implemented');
+      return gradeMultiChoice(
+        submissionText,
+        graderConfig.config as unknown as MultiChoiceGraderConfig
+      );
     default:
       throw new Error(`Unknown grader type: ${(graderConfig as { type: string }).type}`);
   }

@@ -81,9 +81,9 @@ The dispatcher returns the same `EvaluationOutput` shape that `scoring.ts` alrea
 
 | ID    | Title                                  | Type           | Grader        | Status   |
 |-------|----------------------------------------|----------------|---------------|----------|
-| CH-19 | Pix Key Validator                      | intermediate   | code-sandbox  | planned  |
-| CH-20 | SQL Injection Triage                   | intermediate   | multi-choice  | planned  |
-| CH-21 | OpenAPI Contract Designer              | advanced       | structured    | planned  |
+| CH-19 | Pix Key Validator                      | intermediate   | code-sandbox  | **done** |
+| CH-20 | SQL Injection Triage                   | intermediate   | multi-choice  | **done** |
+| CH-21 | OpenAPI Contract Designer              | advanced       | structured    | **done** |
 | CH-22 | OAuth Sequence Diagram (Mermaid)       | intermediate   | structured    | planned  |
 | CH-23 | Transaction CSV Aggregator             | intermediate   | code-sandbox  | planned  |
 | CH-24 | Idempotency Key Middleware             | advanced       | code-sandbox  | planned  |
@@ -243,19 +243,32 @@ npx tsx src/lib/services/evaluation/__e2e_smoke_test__.ts
 DATABASE_URL=... npx tsx scripts/verify-new-challenges.ts
 ```
 
-### Session 2 (next — pick up here)
-- [ ] Try a real submission via the UI for each of the 3 new challenges (Sofia user)
-- [ ] Implement CH-19 (Pix Key Validator — code-sandbox)
-- [ ] Implement CH-20 (SQL Injection Triage — multi-choice grader, NEW)
-  - Add `multi-choice-grader.ts`
-  - Add it to `auto-graders/index.ts` switch
-  - Add unit tests
-- [ ] Implement CH-21 (OpenAPI Contract Designer — structured)
+### Session 2 (DONE)
+- [x] Implement CH-19 (Pix Key Validator — code-sandbox)
+- [x] Implement CH-20 (SQL Injection Triage — multi-choice grader, NEW)
+  - [x] Built `multi-choice-grader.ts` TDD-style (10 unit tests)
+  - [x] Wired into `auto-graders/index.ts` switch
+  - [x] Supports single-select (case-insensitive) and multi-select (order-insensitive set)
+  - [x] Weighted scoring via `question.points`
+- [x] Implement CH-21 (OpenAPI Contract Designer — structured)
+  - [x] Extended `gradeObjectMode` to treat arrays as order-insensitive sets (TDD)
+- [x] Extended e2e smoke tests (9 → 19 cases, all green)
+- [x] Re-seeded DB (18 → 21 challenges)
 
-### Session 3 (planned)
-- [ ] CH-22 (Mermaid sequence diagram — structured w/ parser)
-- [ ] CH-23 (Transaction CSV Aggregator — code-sandbox)
-- [ ] CH-24 (Idempotency Key Middleware — code-sandbox, harder)
+**Artifacts produced this session:**
+- `src/lib/services/evaluation/auto-graders/multi-choice-grader.ts` (new)
+- `src/lib/services/evaluation/auto-graders/structured-grader.ts` (object-mode arrays now order-insensitive)
+- `src/lib/services/evaluation/auto-graders/index.ts` (wired multi-choice)
+- `src/lib/services/evaluation/auto-graders/__smoke_test__.ts` (10 → 22 tests)
+- `src/lib/services/evaluation/__e2e_smoke_test__.ts` (9 → 19 tests)
+- 3 new entries in `src/lib/data.ts`: CH-19, CH-20, CH-21
+- `scripts/verify-new-challenges.ts` (covers 6 auto-graded IDs)
+
+### Session 3 (next — pick up here)
+- [ ] Try a real submission via the UI for each of the 6 auto-graded challenges
+- [ ] Implement CH-22 (Mermaid sequence diagram — structured w/ parser)
+- [ ] Implement CH-23 (Transaction CSV Aggregator — code-sandbox)
+- [ ] Implement CH-24 (Idempotency Key Middleware — code-sandbox, harder)
 - [ ] Inspect and improve UI for code-sandbox challenges (currently a textarea)
 
 ### Session 4 (planned)

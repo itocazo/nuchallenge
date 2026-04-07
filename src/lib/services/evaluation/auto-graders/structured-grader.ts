@@ -106,6 +106,30 @@ function gradeListMode(
   return { passed, total, score, testCases, feedback };
 }
 
+/**
+ * Order-insensitive comparison: arrays are treated as sets, objects as
+ * recursive structures, strings/numbers as primitives. Used so learners don't
+ * have to guess the canonical array order.
+ */
+function fieldEquals(actual: unknown, expected: unknown): boolean {
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual)) return false;
+    if (actual.length !== expected.length) return false;
+    // Sort both using JSON stringify as a stable ordering, then deep compare.
+    const sortedA = [...actual].map((x) => JSON.stringify(x)).sort();
+    const sortedE = [...expected].map((x) => JSON.stringify(x)).sort();
+    return sortedA.every((v, i) => v === sortedE[i]);
+  }
+  if (expected !== null && typeof expected === 'object') {
+    if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
+    const aObj = actual as Record<string, unknown>;
+    const eObj = expected as Record<string, unknown>;
+    const eKeys = Object.keys(eObj);
+    return eKeys.every((k) => fieldEquals(aObj[k], eObj[k]));
+  }
+  return actual === expected;
+}
+
 function gradeObjectMode(
   parsed: unknown,
   config: StructuredGraderConfig
@@ -127,7 +151,7 @@ function gradeObjectMode(
 
   for (const [key, expected] of Object.entries(answerKey)) {
     const actual = userObj[key];
-    const ok = JSON.stringify(actual) === JSON.stringify(expected);
+    const ok = fieldEquals(actual, expected);
     if (ok) passed++;
     testCases.push({
       description: `Field "${key}"`,
