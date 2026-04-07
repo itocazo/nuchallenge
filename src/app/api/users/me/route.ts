@@ -33,6 +33,12 @@ export async function GET() {
       .innerJoin(challenges, eq(attempts.challengeId, challenges.id))
       .where(eq(attempts.userId, user.id));
 
+    // Total = all currently-active challenges (used for "X/Y completed" progress)
+    const [{ count: totalActive }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(challenges)
+      .where(eq(challenges.active, true));
+
     const completed = userAttempts.filter(a => a.status === 'completed');
     const inProgress = userAttempts.filter(a => a.status === 'in_progress');
 
@@ -83,7 +89,7 @@ export async function GET() {
       badges: user.badges,
       interests: user.interests,
       challengeStats: {
-        total: 50,
+        total: totalActive,
         completed: completed.length,
         inProgress: inProgress.length,
         byDifficulty,

@@ -70,25 +70,15 @@ export default function ExplorerPage() {
   );
   const { data: userData } = useApi<ApiUser>(isAuth ? '/api/users/me' : null);
 
-  // Fallback to seed data if API fails or returns empty (no DB)
+  // Use API data. Fall back to seed only when unauthenticated or the API
+  // genuinely failed — never mix seed stats with real auth data.
   const challenges = challengesData?.challenges;
-  const useSeed = !challengesLoading && !challenges;
+  const useSeed = !isAuth && !challengesLoading && !challenges;
 
   const userName = userData?.name ?? SEED_USERS[0].name;
-  const currentStreak = userData?.currentStreak ?? SEED_USERS[0].currentStreak;
+  const currentStreak = userData?.currentStreak ?? 0;
   const completedCount = userData?.challengeStats?.completed ?? 0;
   const inProgressCount = userData?.challengeStats?.inProgress ?? 0;
-
-  // Seed data fallback
-  const SEED_STATUS: Record<string, { status: ChallengeUserStatus; score?: number }> = {
-    'CH-01': { status: 'completed', score: 87 },
-    'CH-02': { status: 'completed', score: 92 },
-    'CH-21': { status: 'completed', score: 78 },
-    'CH-05': { status: 'in_progress' },
-  };
-
-  const getSeedStatus = (id: string): ChallengeUserStatus => SEED_STATUS[id]?.status ?? 'available';
-  const seedCompleted = Object.values(SEED_STATUS).filter(d => d.status === 'completed').length;
 
   const filteredChallenges = useMemo(() => {
     if (!useSeed && challenges) {
@@ -98,7 +88,7 @@ export default function ExplorerPage() {
         bestScore: c.bestScore,
       }));
     }
-    // Seed fallback with client-side filtering
+    // Seed fallback (public visitor only) — all challenges show as 'available'.
     return SEED_CHALLENGES.filter(c => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -110,23 +100,22 @@ export default function ExplorerPage() {
       }
       if (selectedTags.length > 0 && !c.tags.some(t => selectedTags.includes(t))) return false;
       if (selectedDifficulty !== 'all' && c.difficulty !== selectedDifficulty) return false;
-      if (selectedStatus !== 'all' && getSeedStatus(c.id) !== selectedStatus) return false;
+      if (selectedStatus !== 'all' && selectedStatus !== 'available') return false;
       return true;
     }).map(c => ({
       challenge: c,
-      userStatus: getSeedStatus(c.id),
-      bestScore: SEED_STATUS[c.id]?.score ?? null,
+      userStatus: 'available' as ChallengeUserStatus,
+      bestScore: null,
     }));
   }, [useSeed, challenges, searchQuery, selectedTags, selectedDifficulty, selectedStatus]);
 
+  const totalChallenges = challenges?.length ?? SEED_CHALLENGES.length;
   const availableCount = useSeed
-    ? SEED_CHALLENGES.filter(c => getSeedStatus(c.id) === 'available').length
+    ? SEED_CHALLENGES.length
     : (challenges?.filter(c => c.userStatus === 'available').length ?? 0);
 
-  const displayCompleted = useSeed ? seedCompleted : completedCount;
-  const displayInProgress = useSeed
-    ? Object.values(SEED_STATUS).filter(d => d.status === 'in_progress').length
-    : inProgressCount;
+  const displayCompleted = completedCount;
+  const displayInProgress = inProgressCount;
 
   const recommended = filteredChallenges
     .filter(c => c.userStatus === 'available')
@@ -145,12 +134,12 @@ export default function ExplorerPage() {
           Welcome back, {userName.split(' ')[0]}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          {displayCompleted}/50 challenges completed
+          {displayCompleted}/{totalChallenges} challenges completed
         </p>
         <div className="mt-3 h-2 w-full max-w-md overflow-hidden rounded-full bg-gray-100">
           <div
             className="h-2 rounded-full bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 transition-all"
-            style={{ width: `${(displayCompleted / 50) * 100}%` }}
+            style={{ width: `${totalChallenges > 0 ? (displayCompleted / totalChallenges) * 100 : 0}%` }}
           />
         </div>
       </div>

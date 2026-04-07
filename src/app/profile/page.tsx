@@ -44,27 +44,30 @@ export default function ProfilePage() {
   const { data, loading } = useApi<ProfileData>('/api/users/me');
   const seedUser = SEED_USERS[0];
 
-  // Use API data or fallback to seed
-  const user = data ?? seedUser;
-  const name = data?.name ?? seedUser.name;
-  const department = data?.department ?? seedUser.department;
-  const title = data?.title ?? seedUser.title;
-  const level = data?.level ?? seedUser.level;
-  const levelName = data?.levelName ?? seedUser.levelName;
-  const pointsTotal = data?.pointsTotal ?? seedUser.pointsTotal;
-  const currentStreak = data?.currentStreak ?? seedUser.currentStreak;
+  // Only fall back to seed when the API returned nothing at all (e.g. logged out
+  // or DB error). Once we have real data, never cross-fill nulls from seed —
+  // that leads to showing Sofia's department/title/badges for a different user.
+  const src = data ?? seedUser;
+  const name = src.name;
+  const department = src.department;
+  const title = src.title;
+  const level = src.level;
+  const levelName = src.levelName;
+  const pointsTotal = src.pointsTotal;
+  const currentStreak = src.currentStreak;
   const longestStreak = data?.longestStreak ?? seedUser.longestStreak;
-  const badges = data?.badges ?? seedUser.badges;
-  const interests = data?.interests ?? seedUser.interests;
+  const badges = src.badges ?? [];
+  const interests = src.interests ?? [];
   const completed = data?.challengeStats?.completed ?? seedUser.challengeStats.completed;
   const inProgress = data?.challengeStats?.inProgress ?? seedUser.challengeStats.inProgress;
 
   const tagScores = data?.tagAffinity?.filter(t => t.avgScore > 0).sort((a, b) => b.avgScore - a.avgScore) ?? [];
   const maxScore = Math.max(...tagScores.map(t => t.avgScore), 1);
 
+  // Show a real average only when there's data. Otherwise show em-dash.
   const avgScore = tagScores.length > 0
     ? Math.round(tagScores.reduce((s, t) => s + t.avgScore, 0) / tagScores.length)
-    : 85;
+    : null;
 
   if (loading) {
     return (
@@ -122,7 +125,7 @@ export default function ProfilePage() {
               <div className="text-xs text-gray-500">In Progress</div>
             </div>
             <div>
-              <div className="text-2xl font-bold tabular-nums text-gray-900">{avgScore}</div>
+              <div className="text-2xl font-bold tabular-nums text-gray-900">{avgScore ?? '—'}</div>
               <div className="text-xs text-gray-500">Avg Score</div>
             </div>
           </div>
@@ -213,7 +216,7 @@ export default function ProfilePage() {
                 <span className="flex items-center gap-2 text-gray-500">
                   <Clock className="h-4 w-4 text-gray-400" /> Avg Score
                 </span>
-                <span className="font-semibold tabular-nums text-gray-900">{avgScore}/100</span>
+                <span className="font-semibold tabular-nums text-gray-900">{avgScore !== null ? `${avgScore}/100` : '—'}</span>
               </div>
             </div>
           </div>

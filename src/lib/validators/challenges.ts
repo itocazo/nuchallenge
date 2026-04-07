@@ -6,7 +6,7 @@ export const challengeListQuerySchema = z.object({
   status: z.enum(['available', 'in_progress', 'completed', 'locked']).optional(),
   search: z.string().max(200).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
+  limit: z.coerce.number().int().min(1).max(200).default(20),
 });
 
 export const startChallengeSchema = z.object({
