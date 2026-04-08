@@ -737,6 +737,185 @@ function createRateLimiter(capacity, refillPerSec) {
 `;
   await runChallenge('CH-30', bucketAlways, 0, 50);
 
+  console.log('\n[CH-04 — Spot the Hallucination — Market Analysis]');
+  await runChallenge(
+    'CH-04',
+    JSON.stringify([
+      'The founding year 1999 is wrong — Nubank was founded in 2013.',
+      'Buenos Aires is incorrect — Nubank is headquartered in São Paulo, Brazil.',
+      'Mexico City is not the real headquarter — São Paulo, Brazil is.',
+      'The London Stock Exchange IPO claim is wrong — Nubank IPO\'d on the NYSE (New York).',
+      'PostgreSQL is wrong — the ledger database is actually Apache Cassandra.',
+      'The Argentina expansion is fabricated — Nubank does not operate in Argentina.',
+    ]),
+    90,
+    100
+  );
+  // Only 2 of 5 errors covered
+  await runChallenge(
+    'CH-04',
+    JSON.stringify([
+      'founded 1999 wrong — real year 2013',
+      'PostgreSQL is not the ledger — Cassandra is',
+    ]),
+    30,
+    50
+  );
+  await runChallenge('CH-04', 'not json', 0, 0);
+
+  console.log('\n[CH-06 — Data Dictionary Builder]');
+  await runChallenge(
+    'CH-06',
+    JSON.stringify({
+      entities: ['customer', 'account', 'transaction', 'card', 'notification'],
+      customerPiiFields: ['cpf', 'name', 'email', 'phone', 'birth_date'],
+      accountTypeEnum: ['checking', 'savings'],
+      transactionTypeEnum: ['credit', 'debit', 'pix', 'transfer'],
+      cardTypeEnum: ['virtual', 'physical'],
+      nullableForeignKeys: ['transaction.card_id'],
+      oneToManyRelations: [
+        'customer->account',
+        'account->transaction',
+        'account->card',
+        'customer->notification',
+      ],
+    }),
+    100,
+    100
+  );
+  // Reordered arrays → still 100 (sets)
+  await runChallenge(
+    'CH-06',
+    JSON.stringify({
+      entities: ['notification', 'customer', 'account', 'card', 'transaction'],
+      customerPiiFields: ['phone', 'cpf', 'email', 'name', 'birth_date'],
+      accountTypeEnum: ['savings', 'checking'],
+      transactionTypeEnum: ['pix', 'transfer', 'credit', 'debit'],
+      cardTypeEnum: ['physical', 'virtual'],
+      nullableForeignKeys: ['transaction.card_id'],
+      oneToManyRelations: [
+        'account->card',
+        'customer->account',
+        'customer->notification',
+        'account->transaction',
+      ],
+    }),
+    100,
+    100
+  );
+  // 2 wrong fields: extra PII, wrong enum
+  await runChallenge(
+    'CH-06',
+    JSON.stringify({
+      entities: ['customer', 'account', 'transaction', 'card', 'notification'],
+      customerPiiFields: ['cpf', 'name', 'email', 'phone', 'birth_date', 'id'],
+      accountTypeEnum: ['checking', 'savings', 'business'],
+      transactionTypeEnum: ['credit', 'debit', 'pix', 'transfer'],
+      cardTypeEnum: ['virtual', 'physical'],
+      nullableForeignKeys: ['transaction.card_id'],
+      oneToManyRelations: [
+        'customer->account',
+        'account->transaction',
+        'account->card',
+        'customer->notification',
+      ],
+    }),
+    60,
+    80
+  );
+
+  console.log('\n[CH-10 — Brazilian Phone Normalizer]');
+  const phoneCorrect = `
+function normalizeBrPhone(input) {
+  if (typeof input !== 'string') return null;
+  const digits = input.replace(/\\D/g, '');
+  if (!digits) return null;
+  let local = digits;
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+    local = digits.slice(2);
+  }
+  if (local.length !== 10 && local.length !== 11) return null;
+  const ddd = parseInt(local.slice(0, 2), 10);
+  if (isNaN(ddd) || ddd < 11 || ddd > 99) return null;
+  if (local.length === 11 && local[2] !== '9') return null;
+  return '+55' + local;
+}
+`;
+  await runChallenge('CH-10', phoneCorrect, 100, 100);
+  // Broken: doesn't strip non-digits
+  await runChallenge(
+    'CH-10',
+    `function normalizeBrPhone(s) { return s; }`,
+    0,
+    30
+  );
+  // Forbidden
+  await runChallenge(
+    'CH-10',
+    `function normalizeBrPhone(s) { return process.env.X; }`,
+    0,
+    0
+  );
+
+  console.log('\n[CH-12 — Test-of-Tests: CPF Suite]');
+  const ttGood = `
+function runTests(validator) {
+  const cases = [
+    { input: '52998224725', expected: true },
+    { input: '45317828791', expected: true },
+    { input: '00000000000', expected: false },
+    { input: '11111111111', expected: false },
+    { input: '12345678900', expected: false },
+    { input: '', expected: false },
+    { input: 'abc', expected: false },
+    { input: '5299822472', expected: false },
+    { input: '529.982.247-25', expected: true },
+  ];
+  let passed = 0, failed = 0;
+  for (const c of cases) {
+    let actual;
+    try { actual = validator(c.input); } catch { actual = null; }
+    if (actual === c.expected) passed++; else failed++;
+  }
+  return { total: cases.length, passed, failed };
+}
+`;
+  await runChallenge('CH-12', ttGood, 100, 100);
+
+  // Too few tests (6 < 8) AND only false-expected — catches always-true but
+  // not always-false, and total < 8 fails first harness.
+  const ttTooFew = `
+function runTests(validator) {
+  const cases = [
+    { input: '00000000000', expected: false },
+    { input: '11111111111', expected: false },
+    { input: '12345678900', expected: false },
+    { input: '', expected: false },
+    { input: 'abc', expected: false },
+    { input: '5299822472', expected: false },
+  ];
+  let passed = 0, failed = 0;
+  for (const c of cases) {
+    try { if (validator(c.input) === c.expected) passed++; else failed++; }
+    catch { failed++; }
+  }
+  return { total: cases.length, passed, failed };
+}
+`;
+  // Passes: catches always-true (failed>0 because all-expect-false and true!=false),
+  //         catches always-false (wait — all expected false, always-false returns false, matches all → failed=0, NOT caught)
+  // Fails: correct impl check (total<8), always-false check, length-only check (length-only returns false for empty/abc/short = correct; true for 12345678900 — not expected false → failed>0 ✓ caught)
+  // So: 2/4 passes = 50
+  await runChallenge('CH-12', ttTooFew, 40, 60);
+
+  // Broken: returns nothing
+  await runChallenge(
+    'CH-12',
+    `function runTests(v) { return null; }`,
+    0,
+    10
+  );
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {
     process.exit(1);

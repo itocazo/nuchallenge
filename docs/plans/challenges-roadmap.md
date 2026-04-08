@@ -320,7 +320,35 @@ DATABASE_URL=... npx tsx scripts/verify-new-challenges.ts
   on `point_transactions` referential integrity. All 12 ran 100/100.
 - [x] DB reseeded (27 → 30 challenges).
 
-### Session 6 (planned)
+### Session 6 (DONE) — Wave 5: convert the trivially-gradable ai-judge challenges
+- [x] **CH-04** Spot the Hallucination — Market Analysis (`ai-judge` →
+  `automated-test` via `structured` list-mode fuzzy grader, 5 keyword-based
+  answer entries).
+- [x] **CH-06** Data Dictionary Builder (`ai-judge` → `automated-test` via
+  `structured` object-mode grader with 7 canonical fields; arrays are
+  order-insensitive sets).
+- [x] **CH-10** Prompt-to-Code Basics → repurposed to **Brazilian Phone
+  Normalizer** (`ai-judge` → `automated-test` via `code-sandbox` grader,
+  12 visible test cases). Avoids collision with CH-28 CPF Validator.
+- [x] **CH-12** Test Generation with AI → repurposed to **Test-of-Tests: CPF
+  Validator Suite** (`ai-judge` → `automated-test`, `code-sandbox` with
+  4 harness tests that call `runTests(validator)` with correct / always-true /
+  always-false / length-only reference impls and verify the suite
+  discriminates). Prerequisites cleared.
+- [x] `seed.ts` switched from `onConflictDoNothing` to `onConflictDoUpdate` so
+  subsequent reseeds actually refresh `evaluationMethod` / `rubric.grader` /
+  `instructions` on existing rows.
+- [x] Extended e2e smoke (48 → 60 cases, all green).
+- [x] Renamed `scripts/smoke-ui-12.ts` → `scripts/smoke-ui-16.ts`, added the
+  4 new challenges. **16/16 real HTTP submissions returned score=100
+  status=completed.**
+
+**Remaining ai-judge challenges (intentionally left alone):**
+CH-01, CH-02, CH-03, CH-05, CH-08 (SQL — no sandbox), CH-11, CH-14, CH-15,
+CH-16, CH-17, CH-18. Per user decision: "The others, with a deterministic
+structure, are not worth changing; LLM does a good job of analyzing it."
+
+### Session 7 (planned)
 - [ ] Real HTTP smoke for CH-25/26/27 (needs ANTHROPIC_API_KEY for the AI side
   of the hybrid path; auto portion already covered by `__e2e_smoke_test__.ts`).
 

@@ -1,6 +1,7 @@
 /**
- * Real UI smoke test for the 12 auto-graded challenges (CH-09, CH-07, CH-13,
- * CH-19, CH-20, CH-21, CH-22, CH-23, CH-24, CH-28, CH-29, CH-30).
+ * Real UI smoke test for the 16 auto-graded challenges (CH-04, CH-06, CH-07,
+ * CH-09, CH-10, CH-12, CH-13, CH-19, CH-20, CH-21, CH-22, CH-23, CH-24, CH-28,
+ * CH-29, CH-30).
  *
  * Hits the running dev server's HTTP API end-to-end:
  *   1. POST /api/challenges/:id/start  → creates an attempt
@@ -17,7 +18,7 @@
  *   - DB seeded with the 30 challenges (run `npx tsx src/db/seed.ts` first)
  *
  * Run with:
- *   set -a && source .env.local && set +a && npx tsx scripts/smoke-ui-12.ts
+ *   set -a && source .env.local && set +a && npx tsx scripts/smoke-ui-16.ts
  */
 import { db } from '../src/db';
 import { users, attempts, pointTransactions } from '../src/db/schema';
@@ -46,6 +47,77 @@ interface SmokeCase {
 }
 
 const CASES: SmokeCase[] = [
+  {
+    id: 'CH-04',
+    submission: JSON.stringify([
+      'The founding year 1999 is wrong — Nubank was founded in 2013.',
+      'Buenos Aires / Mexico City is wrong — Nubank is headquartered in São Paulo, Brazil.',
+      'The London Stock Exchange claim is wrong — Nubank IPO\'d on the NYSE (New York) under ticker NU.',
+      'PostgreSQL is wrong — the ledger database is actually Apache Cassandra.',
+      'The Argentina expansion is fabricated — Nubank does not operate in Argentina.',
+    ]),
+    minScore: 100,
+  },
+  {
+    id: 'CH-06',
+    submission: JSON.stringify({
+      entities: ['customer', 'account', 'transaction', 'card', 'notification'],
+      customerPiiFields: ['cpf', 'name', 'email', 'phone', 'birth_date'],
+      accountTypeEnum: ['checking', 'savings'],
+      transactionTypeEnum: ['credit', 'debit', 'pix', 'transfer'],
+      cardTypeEnum: ['virtual', 'physical'],
+      nullableForeignKeys: ['transaction.card_id'],
+      oneToManyRelations: [
+        'customer->account',
+        'account->transaction',
+        'account->card',
+        'customer->notification',
+      ],
+    }),
+    minScore: 100,
+  },
+  {
+    id: 'CH-10',
+    submission: `function normalizeBrPhone(input) {
+  if (typeof input !== 'string') return null;
+  const digits = input.replace(/\\D/g, '');
+  if (!digits) return null;
+  let local = digits;
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+    local = digits.slice(2);
+  }
+  if (local.length !== 10 && local.length !== 11) return null;
+  const ddd = parseInt(local.slice(0, 2), 10);
+  if (isNaN(ddd) || ddd < 11 || ddd > 99) return null;
+  if (local.length === 11 && local[2] !== '9') return null;
+  return '+55' + local;
+}`,
+    minScore: 100,
+  },
+  {
+    id: 'CH-12',
+    submission: `function runTests(validator) {
+  const cases = [
+    { input: '52998224725', expected: true },
+    { input: '45317828791', expected: true },
+    { input: '00000000000', expected: false },
+    { input: '11111111111', expected: false },
+    { input: '12345678900', expected: false },
+    { input: '', expected: false },
+    { input: 'abc', expected: false },
+    { input: '5299822472', expected: false },
+    { input: '529.982.247-25', expected: true },
+  ];
+  let passed = 0, failed = 0;
+  for (const c of cases) {
+    let actual;
+    try { actual = validator(c.input); } catch { actual = null; }
+    if (actual === c.expected) passed++; else failed++;
+  }
+  return { total: cases.length, passed, failed };
+}`,
+    minScore: 100,
+  },
   {
     id: 'CH-09',
     submission:

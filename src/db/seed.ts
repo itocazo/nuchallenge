@@ -19,28 +19,49 @@ async function seed() {
 
   console.log('Seeding challenges...');
   for (const challenge of SEED_CHALLENGES) {
+    const values = {
+      id: challenge.id,
+      title: challenge.title,
+      description: challenge.description,
+      instructions: challenge.instructions,
+      tags: challenge.tags,
+      difficulty: challenge.difficulty,
+      timeMinutes: challenge.timeMinutes,
+      pointsBase: challenge.pointsBase,
+      submissionFormat: challenge.submissionFormat,
+      evaluationMethod: challenge.evaluationMethod,
+      rubric: challenge.rubric,
+      antiCheatTier: challenge.antiCheatTier,
+      prerequisites: challenge.prerequisites,
+      producesAsset: challenge.producesAsset,
+      assetType: challenge.assetType,
+      hints: challenge.hints,
+      active: challenge.active,
+    };
     await db
       .insert(schema.challenges)
-      .values({
-        id: challenge.id,
-        title: challenge.title,
-        description: challenge.description,
-        instructions: challenge.instructions,
-        tags: challenge.tags,
-        difficulty: challenge.difficulty,
-        timeMinutes: challenge.timeMinutes,
-        pointsBase: challenge.pointsBase,
-        submissionFormat: challenge.submissionFormat,
-        evaluationMethod: challenge.evaluationMethod,
-        rubric: challenge.rubric,
-        antiCheatTier: challenge.antiCheatTier,
-        prerequisites: challenge.prerequisites,
-        producesAsset: challenge.producesAsset,
-        assetType: challenge.assetType,
-        hints: challenge.hints,
-        active: challenge.active,
-      })
-      .onConflictDoNothing();
+      .values(values)
+      .onConflictDoUpdate({
+        target: schema.challenges.id,
+        set: {
+          title: values.title,
+          description: values.description,
+          instructions: values.instructions,
+          tags: values.tags,
+          difficulty: values.difficulty,
+          timeMinutes: values.timeMinutes,
+          pointsBase: values.pointsBase,
+          submissionFormat: values.submissionFormat,
+          evaluationMethod: values.evaluationMethod,
+          rubric: values.rubric,
+          antiCheatTier: values.antiCheatTier,
+          prerequisites: values.prerequisites,
+          producesAsset: values.producesAsset,
+          assetType: values.assetType,
+          hints: values.hints,
+          active: values.active,
+        },
+      });
   }
   console.log(`  ✓ ${SEED_CHALLENGES.length} challenges seeded`);
 
