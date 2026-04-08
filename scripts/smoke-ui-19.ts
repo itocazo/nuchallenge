@@ -1,7 +1,7 @@
 /**
- * Real UI smoke test for the 16 auto-graded challenges (CH-04, CH-06, CH-07,
- * CH-09, CH-10, CH-12, CH-13, CH-19, CH-20, CH-21, CH-22, CH-23, CH-24, CH-28,
- * CH-29, CH-30).
+ * Real UI smoke test for the 19 auto-graded challenges (CH-01, CH-02, CH-04,
+ * CH-06, CH-07, CH-09, CH-10, CH-12, CH-13, CH-17, CH-19, CH-20, CH-21, CH-22,
+ * CH-23, CH-24, CH-28, CH-29, CH-30).
  *
  * Hits the running dev server's HTTP API end-to-end:
  *   1. POST /api/challenges/:id/start  → creates an attempt
@@ -18,7 +18,7 @@
  *   - DB seeded with the 30 challenges (run `npx tsx src/db/seed.ts` first)
  *
  * Run with:
- *   set -a && source .env.local && set +a && npx tsx scripts/smoke-ui-16.ts
+ *   set -a && source .env.local && set +a && npx tsx scripts/smoke-ui-19.ts
  */
 import { db } from '../src/db';
 import { users, attempts, pointTransactions } from '../src/db/schema';
@@ -264,6 +264,39 @@ const CASES: SmokeCase[] = [
     }
   };
 }`,
+    minScore: 100,
+  },
+  {
+    id: 'CH-01',
+    submission: JSON.stringify([
+      'The problem statement is vague — no 12 notifications/day baseline, no 68% dismissal number.',
+      'No user stories in As-a / I-want / so-that format — just a feature list.',
+      'The "users feel happy" metric is not measurable — needs a numeric KPI.',
+      'Scope creep: SMS fallback, admin dashboard, and the SNS migration do not belong here.',
+      'No explicit out-of-scope / boundary section — readers cannot tell what is excluded.',
+    ]),
+    minScore: 90,
+  },
+  {
+    id: 'CH-02',
+    submission: JSON.stringify({
+      answers: {
+        q1: 't',
+        q2: 's',
+        q3: 'n',
+        q4: 'i',
+        q5: 'v',
+        q6: 'e',
+        q7: 't',
+      },
+    }),
+    minScore: 100,
+  },
+  {
+    id: 'CH-17',
+    submission: JSON.stringify({
+      answers: { q1: 'b', q2: 'b', q3: 'b', q4: 'c', q5: 'b', q6: 'b' },
+    }),
     minScore: 100,
   },
   {

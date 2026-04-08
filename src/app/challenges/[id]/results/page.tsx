@@ -47,19 +47,6 @@ interface ResultData {
   evaluating: boolean;
 }
 
-function generateDemoResult(challenge: typeof SEED_CHALLENGES[0]) {
-  const scores = challenge.rubric.criteria.map(c => ({
-    name: c.name,
-    weight: c.weight,
-    score: Math.floor(Math.random() * 20) + 75,
-    justification: `Your ${c.name.toLowerCase()} demonstrates solid understanding. ${c.description} — you met most expectations with room for refinement on edge cases.`,
-  }));
-  const overall = Math.round(
-    scores.reduce((sum, s) => sum + s.score * (s.weight / 100), 0)
-  );
-  return { criteria: scores, overallScore: overall, confidence: 0.87, feedback: 'Your submission demonstrates a strong grasp of the core concepts.' };
-}
-
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const searchParams = useSearchParams();
@@ -71,6 +58,26 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
   const seedChallenge = SEED_CHALLENGES.find(c => c.id === id);
   const [showFeedback, setShowFeedback] = useState(false);
+
+  // No attempt ID in the URL — refuse to render a fake score.
+  if (!attemptId) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+        <AlertCircle className="mb-3 h-10 w-10 text-gray-300" />
+        <p className="text-lg font-semibold text-gray-600">No attempt selected</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Results pages are tied to a specific submission attempt.
+        </p>
+        <Link
+          href={`/challenges/${id}`}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-medium text-purple-600 hover:bg-purple-100"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to Challenge
+        </Link>
+      </div>
+    );
+  }
 
   // Poll while evaluating
   useEffect(() => {
@@ -96,11 +103,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  // Use API data or fallback to demo
-  const isDemo = !data || !data.evaluation;
-  const demoResult = seedChallenge ? generateDemoResult(seedChallenge) : null;
-
-  const evaluation = data?.evaluation ?? demoResult;
+  const evaluation = data?.evaluation ?? null;
   const overallScore = data?.qualityScore ?? evaluation?.overallScore ?? 0;
   const challengeTitle = data?.challengeTitle ?? seedChallenge?.title ?? 'Challenge';
 
@@ -255,6 +258,16 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 </dd>
               </div>
             </dl>
+            <div className="border-t border-amber-200/60 bg-amber-50/60 px-4 py-2 text-[10px] leading-relaxed text-amber-800/80">
+              <span className="font-semibold uppercase tracking-wider">Formula:</span>{' '}
+              round(score% × base) + speed + streak + reviewer adj.
+              <br />
+              <span className="text-amber-700/70">
+                This run: round({overallScore}% × {challengeMaxBase}) = {basePoints} base
+                {totalBonuses > 0 ? ` + ${totalBonuses} bonuses` : ''}
+                {' '}= {pointsEarned} pts.
+              </span>
+            </div>
           </div>
 
           <div className="w-full rounded-xl border border-gray-200 bg-white p-4 text-center">

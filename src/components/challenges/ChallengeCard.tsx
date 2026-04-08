@@ -32,7 +32,33 @@ export default function ChallengeCard({
       )}
     >
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-400">{challenge.id}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-400">{challenge.id}</span>
+          {challenge.evaluationMethod === 'hybrid' && (
+            <span
+              className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-600"
+              title="Hybrid: 70% automated tests + 30% AI rubric review"
+            >
+              Hybrid
+            </span>
+          )}
+          {challenge.evaluationMethod === 'automated-test' && (
+            <span
+              className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600"
+              title="Auto-graded in under a second"
+            >
+              Auto
+            </span>
+          )}
+          {challenge.evaluationMethod === 'ai-judge' && (
+            <span
+              className="rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-purple-600"
+              title="AI rubric review"
+            >
+              AI
+            </span>
+          )}
+        </div>
         <DifficultyBadge difficulty={challenge.difficulty} />
       </div>
 

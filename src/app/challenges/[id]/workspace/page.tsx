@@ -73,6 +73,32 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
     return () => clearInterval(interval);
   }, [saveDraft]);
 
+  // Guard against losing work on tab close / reload while there are unsaved
+  // changes (anything different from what the autosave timer last flushed).
+  const isDirty = submission !== lastSaved.current && submission.trim().length > 0;
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Modern browsers ignore the custom string but still show a prompt
+      // when returnValue is set.
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  // Intercept the in-app Exit link when the draft is dirty.
+  const handleExit = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isDirty || isSubmitting) return;
+    const ok = window.confirm(
+      'You have unsaved changes in your submission. Leave the workspace anyway?'
+    );
+    if (!ok) {
+      e.preventDefault();
+    }
+  };
+
   if (!challenge) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
@@ -140,6 +166,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
       <div className="mb-4 flex items-center justify-between gap-4">
         <Link
           href={`/challenges/${id}`}
+          onClick={handleExit}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft className="h-4 w-4" />

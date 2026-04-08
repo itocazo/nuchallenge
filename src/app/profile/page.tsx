@@ -168,25 +168,24 @@ export default function ProfilePage() {
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">Badges</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {(badges ?? []).map(badge => {
-                const BadgeIcon = BADGE_ICONS[badge] ?? Award;
-                return (
-                  <div key={badge} className="flex flex-col items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 p-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
-                      <BadgeIcon className="h-5 w-5 text-amber-600" />
+          {badges && badges.length > 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h2 className="mb-3 text-sm font-semibold text-gray-900">Badges</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {badges.map(badge => {
+                  const BadgeIcon = BADGE_ICONS[badge] ?? Award;
+                  return (
+                    <div key={badge} className="flex flex-col items-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
+                        <BadgeIcon className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">{badge}</span>
                     </div>
-                    <span className="text-xs font-medium text-gray-700">{badge}</span>
-                  </div>
-                );
-              })}
-              {(!badges || badges.length === 0) && (
-                <p className="col-span-2 text-xs text-gray-400">No badges yet</p>
-              )}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-3 text-sm font-semibold text-gray-900">Interests</h2>

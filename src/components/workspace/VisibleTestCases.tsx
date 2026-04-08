@@ -87,10 +87,20 @@ export default function VisibleTestCases({ grader }: VisibleTestCasesProps) {
       </button>
       {expanded && (
         <div className="space-y-3 border-t border-gray-100 p-4">
+          {hiddenCount > 0 && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-900">
+              <EyeOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <span>
+                <strong>Heads up:</strong> {visible.length} of {allTests.length} tests are
+                visible below. The remaining {hiddenCount} are hidden and will run when
+                you submit. Passing only the visible ones is not enough — write your
+                solution to handle edge cases too.
+              </span>
+            </div>
+          )}
           <p className="text-xs text-gray-500">
             Your <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px] text-gray-700">{entrypoint}</code>{' '}
             will be called with these inputs. Deep equality against the expected output.
-            {hiddenCount > 0 && ' Hidden tests are withheld until after you submit.'}
           </p>
           {visible.map((test, i) => (
             <div

@@ -102,6 +102,18 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
 
           <div>
             <h2 className="mb-3 text-lg font-semibold text-gray-900">Evaluation Criteria</h2>
+            <div className="mb-3 rounded-lg border border-purple-100 bg-purple-50/60 p-3 text-xs text-purple-900">
+              <span className="font-semibold">How points are earned: </span>
+              round(your score % × {challenge.pointsBase} base pts){' '}
+              + speed bonus + streak bonus + reviewer adjustments.
+              {challenge.evaluationMethod === 'hybrid' && (
+                <>
+                  {' '}
+                  <span className="font-semibold">Hybrid grading:</span> 70% from
+                  automated tests + 30% from AI rubric review.
+                </>
+              )}
+            </div>
             <div className="space-y-2">
               {challenge.rubric.criteria.map(criterion => (
                 <div key={criterion.name} className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3">

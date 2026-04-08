@@ -916,6 +916,115 @@ function runTests(validator) {
     10
   );
 
+  console.log('\n[CH-01 — Spot the Bad PRD]');
+  // All 5 issues covered with correct keyword pairs
+  await runChallenge(
+    'CH-01',
+    JSON.stringify([
+      'The problem statement is vague — no 12 notifications/day baseline, no 68% dismissal number anywhere.',
+      'There are no user stories in As-a / I-want / so-that format — just a feature list.',
+      'The "users feel happy" metric is not measurable — needs a numeric KPI like % reduction or dismissal rate.',
+      'Scope creep: SMS fallback, admin dashboard, and the SNS migration do not belong in a notification-relevance PRD.',
+      'There is no explicit out-of-scope / boundary section — readers cannot tell what is excluded.',
+    ]),
+    90,
+    100
+  );
+  // Only 2 of 5 issues covered
+  await runChallenge(
+    'CH-01',
+    JSON.stringify([
+      'vague problem — missing the 12 and 68 baseline numbers',
+      'no out-of-scope section, needs explicit boundaries',
+    ]),
+    30,
+    50
+  );
+  await runChallenge('CH-01', 'not json', 0, 0);
+
+  console.log('\n[CH-02 — INVEST Triage]');
+  // All 7 correct
+  await runChallenge(
+    'CH-02',
+    JSON.stringify({
+      answers: {
+        q1: 't',
+        q2: 's',
+        q3: 'n',
+        q4: 'i',
+        q5: 'v',
+        q6: 'e',
+        q7: 't',
+      },
+    }),
+    100,
+    100
+  );
+  // 3 of 7 correct
+  await runChallenge(
+    'CH-02',
+    JSON.stringify({
+      answers: {
+        q1: 't',
+        q2: 's',
+        q3: 'n',
+        q4: 'v',
+        q5: 'i',
+        q6: 'i',
+        q7: 'v',
+      },
+    }),
+    35,
+    50
+  );
+  // All wrong
+  await runChallenge(
+    'CH-02',
+    JSON.stringify({
+      answers: { q1: 'i', q2: 'i', q3: 'i', q4: 't', q5: 't', q6: 't', q7: 'i' },
+    }),
+    0,
+    5
+  );
+
+  console.log('\n[CH-17 — Copilot Rollout]');
+  // All 6 correct
+  await runChallenge(
+    'CH-17',
+    JSON.stringify({
+      answers: { q1: 'b', q2: 'b', q3: 'b', q4: 'c', q5: 'b', q6: 'b' },
+    }),
+    100,
+    100
+  );
+  // Case-insensitive
+  await runChallenge(
+    'CH-17',
+    JSON.stringify({
+      answers: { q1: 'B', q2: 'B', q3: 'B', q4: 'C', q5: 'B', q6: 'B' },
+    }),
+    100,
+    100
+  );
+  // 3 of 6 correct
+  await runChallenge(
+    'CH-17',
+    JSON.stringify({
+      answers: { q1: 'a', q2: 'b', q3: 'a', q4: 'c', q5: 'a', q6: 'b' },
+    }),
+    45,
+    55
+  );
+  // All wrong
+  await runChallenge(
+    'CH-17',
+    JSON.stringify({
+      answers: { q1: 'a', q2: 'a', q3: 'a', q4: 'a', q5: 'a', q6: 'a' },
+    }),
+    0,
+    5
+  );
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {
     process.exit(1);
