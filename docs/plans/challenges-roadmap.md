@@ -96,6 +96,14 @@ The dispatcher returns the same `EvaluationOutput` shape that `scoring.ts` alrea
 | CH-26 | Optimize a Slow Function               | advanced       | hybrid (bench+ai)    | **done** |
 | CH-27 | AI Code Review Checklist               | intermediate   | hybrid               | **done** |
 
+### Wave 4 — variety: beginner code, AI safety, distributed systems
+
+| ID    | Title                                  | Type           | Grader               | Status   |
+|-------|----------------------------------------|----------------|----------------------|----------|
+| CH-28 | CPF Validator                          | beginner       | code-sandbox         | **done** |
+| CH-29 | Prompt Injection Triage                | intermediate   | multi-choice         | **done** |
+| CH-30 | Token Bucket Rate Limiter              | advanced       | code-sandbox+harness | **done** |
+
 ---
 
 ## Grader specs
@@ -302,7 +310,17 @@ DATABASE_URL=... npx tsx scripts/verify-new-challenges.ts
 - `src/lib/services/evaluation/__e2e_smoke_test__.ts` (29 → 39 tests, with `runAutoOnly`)
 - `scripts/smoke-ui-9.ts` (new — real HTTP end-to-end smoke for 9 auto-graded challenges)
 
-### Session 5 (planned)
+### Session 5 (DONE)
+- [x] Wave 4: CH-28 CPF Validator (beginner, code-sandbox), CH-29 Prompt
+  Injection Triage (intermediate, multi-choice), CH-30 Token Bucket Rate
+  Limiter (advanced, code-sandbox + harness).
+- [x] Extended e2e smoke tests (29 → 48 cases, all green).
+- [x] Renamed `scripts/smoke-ui-9.ts` → `scripts/smoke-ui-12.ts`, added the 3
+  new challenges, fixed the FK-aware attempt cleanup so reruns don't break
+  on `point_transactions` referential integrity. All 12 ran 100/100.
+- [x] DB reseeded (27 → 30 challenges).
+
+### Session 6 (planned)
 - [ ] Real HTTP smoke for CH-25/26/27 (needs ANTHROPIC_API_KEY for the AI side
   of the hybrid path; auto portion already covered by `__e2e_smoke_test__.ts`).
 

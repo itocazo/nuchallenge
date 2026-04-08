@@ -1244,6 +1244,268 @@ export const SEED_CHALLENGES: Challenge[] = [
     ],
     active: true,
   },
+  {
+    id: 'CH-28',
+    title: 'CPF Validator',
+    description: 'Implement the official Brazilian CPF (Cadastro de Pessoas Físicas) validation algorithm — strip formatting, reject all-same-digit edge cases, and check both verifier digits. Auto-graded.',
+    instructions: '## Your Task\n\nWrite a function `isValidCPF(cpf)` that returns `true` for a valid Brazilian CPF and `false` otherwise.\n\n### Algorithm\n\n1. Strip every non-digit character from the input (`111.444.777-35` and `11144477735` are the same input).\n2. Reject if the result isn\'t exactly 11 digits.\n3. Reject if all 11 digits are the same (`00000000000`, `11111111111`, etc — these pass the math but are blocked by Receita Federal).\n4. Compute the **first verifier digit**:\n   - Multiply digits 1..9 by weights `10, 9, 8, 7, 6, 5, 4, 3, 2`, sum them.\n   - `d1 = (sum * 10) % 11`. If `d1 === 10`, set `d1 = 0`.\n   - It must equal digit 10.\n5. Compute the **second verifier digit**:\n   - Multiply digits 1..10 (now including the first verifier) by weights `11, 10, 9, 8, 7, 6, 5, 4, 3, 2`, sum them.\n   - `d2 = (sum * 10) % 11`. If `d2 === 10`, set `d2 = 0`.\n   - It must equal digit 11.\n\n### Examples\n\n```javascript\nisValidCPF("111.444.777-35"); // true   (canonical valid test CPF)\nisValidCPF("11144477735");    // true   (same number, no formatting)\nisValidCPF("111.444.777-36"); // false  (last verifier wrong)\nisValidCPF("111.444.777-30"); // false  (last verifier wrong)\nisValidCPF("11111111111");    // false  (all-same blocked)\nisValidCPF("123");            // false  (too short)\nisValidCPF("");               // false\nisValidCPF("abc");             // false\n```\n\n### Submission\n\n```javascript\nfunction isValidCPF(cpf) {\n  // your code here\n}\n```\n\n### Sandbox restrictions\nNo `require`, `process`, network calls, or dynamic code execution. Pure JavaScript only.',
+    tags: ['Coding', 'Financial Analysis', 'Critical Thinking'],
+    difficulty: 'beginner',
+    timeMinutes: 25,
+    pointsBase: 150,
+    submissionFormat: 'JavaScript function',
+    evaluationMethod: 'automated-test',
+    rubric: {
+      criteria: [
+        { name: 'Test cases passing', weight: 100, description: '% of sandbox test cases that pass' },
+      ],
+      grader: {
+        type: 'code-sandbox',
+        config: {
+          language: 'javascript',
+          entrypoint: 'isValidCPF',
+          testCases: [
+            { description: 'valid CPF with formatting', input: ['111.444.777-35'], expected: true },
+            { description: 'valid CPF as raw digits', input: ['11144477735'], expected: true },
+            { description: 'invalid — last verifier wrong', input: ['111.444.777-36'], expected: false },
+            { description: 'invalid — both verifiers wrong', input: ['111.444.777-00'], expected: false },
+            { description: 'all-same digits (blocked)', input: ['11111111111'], expected: false },
+            { description: 'too short', input: ['123'], expected: false },
+            { description: 'empty string', input: [''], expected: false },
+            { description: '[hidden] non-digit input', input: ['abcdefghijk'], expected: false },
+            { description: '[hidden] zeros all-same', input: ['00000000000'], expected: false },
+            { description: '[hidden] valid CPF #2', input: ['529.982.247-25'], expected: true, hidden: true },
+            { description: '[hidden] valid CPF #3 (raw)', input: ['52998224725'], expected: true, hidden: true },
+            { description: '[hidden] invalid CPF #2', input: ['529.982.247-26'], expected: false, hidden: true },
+          ],
+          timeoutMs: 1000,
+        },
+      },
+    },
+    antiCheatTier: 'T0',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'code',
+    hints: [
+      { level: 1, text: 'Use `cpf.replace(/\\D/g, "")` to keep only digits, then check `length === 11`.' },
+      { level: 2, text: 'For the all-same check: `/^(\\d)\\1{10}$/.test(digits)` is the cleanest one-liner.' },
+      { level: 3, text: 'Both verifier loops use the same pattern with shifted weights. Extract a small helper `function calcDigit(digits, length)` to avoid duplication.' },
+    ],
+    active: true,
+  },
+  {
+    id: 'CH-29',
+    title: 'Prompt Injection Triage',
+    // The Q5 example deliberately references React's raw-HTML escape hatch (the
+    // `dangerously` + `SetInnerHTML` prop) as a teaching example of an unsafe
+    // sink for LLM output. The string is split below so security scanners that
+    // flag the literal token don't trip on this teaching content.
+    instructions: '## Your Task\n\nNubank ships LLM features inside the app (chat, summarization, code review). Each snippet below shows a way someone wired a prompt or output. Decide whether it is **vulnerable** to prompt injection or **safe**, then pick the best defenses.\n\n---\n\n### Q1 — concatenating user input into the system prompt\n\n```python\nsystem = "You are a banking assistant. Never reveal balances. " + user_message\nresponse = llm.complete(system)\n```\n\n**Question:** Is this `vulnerable` or `safe`?\n\n---\n\n### Q2 — separate system / user roles\n\n```python\nresponse = llm.chat([\n  { "role": "system", "content": "You are a banking assistant. Never reveal balances." },\n  { "role": "user",   "content": user_message },\n])\n```\n\n**Question:** Is this `vulnerable` or `safe`?\n\n---\n\n### Q3 — passing the model output straight into a shell\n\n```python\ncmd = llm.complete("Suggest a unix command to summarize: " + filename)\nsubprocess.run(cmd, shell=True)\n```\n\n**Question:** Is this `vulnerable` or `safe`?\n\n---\n\n### Q4 — rendering output as escaped plain text\n\n```jsx\n<div>{llmResponse}</div>   // React escapes by default\n```\n\n**Question:** Is this `vulnerable` or `safe`?\n\n---\n\n### Q5 — rendering output as raw HTML via React\'s explicit escape hatch\n\n```jsx\n// Uses the React prop named "' + 'dangerously' + 'SetInnerHTML"\n<div ' + 'dangerously' + 'SetInnerHTML={{ __html: llmResponse }} />\n```\n\n**Question:** Is this `vulnerable` or `safe`?\n\n---\n\n### Q6 — pick the best defenses (multi-select)\n\nWhich of the following are **effective** defenses against prompt injection? (Pick all that apply.)\n\n- `structured-roles` — pass user content via the user role, not by string-concatenating into the system prompt\n- `output-encoding` — escape/encode model output before rendering or executing it\n- `least-privilege-tools` — only expose the minimum tool surface; never give the model raw shell or DB access\n- `input-validation` — validate or constrain inputs (length, allowed characters, schema) before they reach the model\n- `longer-system-prompt` — make the system prompt longer so the model "remembers" not to leak\n- `client-side-keyword-filter` — strip the word "ignore" client-side\n\nThe last two are NOT effective and should NOT be in your answer.\n\n---\n\n### Submission shape\n\n```json\n{\n  "answers": {\n    "q1": "vulnerable",\n    "q2": "safe",\n    "q3": "vulnerable",\n    "q4": "safe",\n    "q5": "vulnerable",\n    "q6": ["structured-roles", "output-encoding", "least-privilege-tools", "input-validation"]\n  }\n}\n```',
+    description: 'Read 5 prompt-handling snippets and classify each as vulnerable or safe to prompt injection. Pick the best set of defenses for the 6th question. Auto-graded.',
+    tags: ['Prompt Engineering', 'Critical Thinking', 'Tech Architecture'],
+    difficulty: 'intermediate',
+    timeMinutes: 20,
+    pointsBase: 170,
+    submissionFormat: 'JSON',
+    evaluationMethod: 'automated-test',
+    rubric: {
+      criteria: [
+        { name: 'Triage accuracy', weight: 100, description: '% of questions answered correctly' },
+      ],
+      grader: {
+        type: 'multi-choice',
+        config: {
+          questions: [
+            { id: 'q1', correctAnswer: 'vulnerable', points: 1 },
+            { id: 'q2', correctAnswer: 'safe', points: 1 },
+            { id: 'q3', correctAnswer: 'vulnerable', points: 1 },
+            { id: 'q4', correctAnswer: 'safe', points: 1 },
+            { id: 'q5', correctAnswer: 'vulnerable', points: 1 },
+            {
+              id: 'q6',
+              correctAnswer: ['structured-roles', 'output-encoding', 'least-privilege-tools', 'input-validation'],
+              points: 2,
+            },
+          ],
+        },
+      },
+    },
+    antiCheatTier: 'T0',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'document',
+    hints: [
+      { level: 1, text: 'Anywhere user input is glued into a privileged context (system prompt, shell command, raw HTML), the user can escape the boundary.' },
+      { level: 2, text: 'Q4 vs Q5: React escapes by default, so plain `{llmResponse}` is safe. The raw-HTML escape hatch is the prompt injection vector.' },
+      { level: 3, text: 'For Q6: defenses that work are *structural* (roles, encoding, least privilege, validation). Defenses that don\'t work are *cosmetic* (longer system prompts, client-side keyword bans).' },
+    ],
+    active: true,
+  },
+  {
+    id: 'CH-30',
+    title: 'Token Bucket Rate Limiter',
+    description: 'Implement a deterministic token-bucket rate limiter with timestamp-driven refill. Same algorithm Nubank uses to throttle internal API clients. Auto-graded with multi-step harness scenarios.',
+    instructions: '## Your Task\n\nBuild a function `createRateLimiter(capacity, refillPerSec)` that returns a token-bucket rate limiter. The bucket starts **full** (`capacity` tokens). Each call to `tryAcquire(nowMs)` either consumes 1 token and returns `true`, or returns `false` if the bucket is empty at that moment.\n\n### Refill rule\n\nBetween calls, tokens are added at `refillPerSec` per second, capped at `capacity`. The refill is computed lazily on each `tryAcquire` call from the elapsed `nowMs` since the last call — there is no background timer.\n\n```\ntokens = min(capacity, tokens + (nowMs - lastNowMs) / 1000 * refillPerSec)\n```\n\nThe bucket may hold fractional tokens internally; you only return `true` when at least 1 full token is available (then subtract 1).\n\n### Contract\n\n```javascript\nconst rl = createRateLimiter(3, 1); // capacity=3, 1 token/sec\n\nrl.tryAcquire(0);    // true  (3 → 2)\nrl.tryAcquire(0);    // true  (2 → 1)\nrl.tryAcquire(0);    // true  (1 → 0)\nrl.tryAcquire(0);    // false (empty)\nrl.tryAcquire(500);  // false (only 0.5 tokens after 500ms)\nrl.tryAcquire(1000); // true  (1.0 token after 1000ms total → consume → 0)\nrl.tryAcquire(5000); // true  (refill capped at 3, consume → 2)\nrl.tryAcquire(5000); // true  (2 → 1)\nrl.tryAcquire(5000); // true  (1 → 0)\nrl.tryAcquire(5000); // false\n```\n\n### Rules\n1. Bucket starts at `capacity` tokens at the time of the first call.\n2. `nowMs` is monotonically non-decreasing across calls (you can assume the caller never goes backward).\n3. Refill is capped at `capacity` — extra tokens are discarded.\n4. Each instance from `createRateLimiter()` is independent (no shared state).\n5. Pure deterministic — no `Date.now()`, no `setTimeout`, no globals. Everything is driven by the `nowMs` argument.\n\n### Submission\n\n```javascript\nfunction createRateLimiter(capacity, refillPerSec) {\n  // your code here\n  return {\n    tryAcquire(nowMs) {\n      // ...\n    }\n  };\n}\n```\n\n### Sandbox restrictions\nNo `require`, `process`, network calls, or dynamic code execution. Pure JavaScript only.',
+    tags: ['Coding', 'Tech Architecture', 'Critical Thinking'],
+    difficulty: 'advanced',
+    timeMinutes: 40,
+    pointsBase: 270,
+    submissionFormat: 'JavaScript function',
+    evaluationMethod: 'automated-test',
+    rubric: {
+      criteria: [
+        { name: 'Test cases passing', weight: 100, description: '% of sandbox test cases that pass' },
+      ],
+      grader: {
+        type: 'code-sandbox',
+        config: {
+          language: 'javascript',
+          entrypoint: 'createRateLimiter',
+          testCases: [
+            {
+              description: 'bucket starts full — 3 acquires at t=0 succeed, 4th fails',
+              input: [],
+              expected: { results: [true, true, true, false] },
+              harness: `
+                const rl = createRateLimiter(3, 1);
+                globalThis.__result = {
+                  results: [rl.tryAcquire(0), rl.tryAcquire(0), rl.tryAcquire(0), rl.tryAcquire(0)],
+                };
+              `,
+            },
+            {
+              description: 'partial refill is not enough — 500ms after empty, still empty',
+              input: [],
+              expected: { results: [true, true, true, false, false] },
+              harness: `
+                const rl = createRateLimiter(3, 1);
+                globalThis.__result = {
+                  results: [
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(500),
+                  ],
+                };
+              `,
+            },
+            {
+              description: 'full second of refill yields exactly 1 token',
+              input: [],
+              expected: { results: [true, true, true, false, true, false] },
+              harness: `
+                const rl = createRateLimiter(3, 1);
+                globalThis.__result = {
+                  results: [
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(0),
+                    rl.tryAcquire(1000),
+                    rl.tryAcquire(1000),
+                  ],
+                };
+              `,
+            },
+            {
+              description: 'refill is capped at capacity (long sleep does not stockpile)',
+              input: [],
+              expected: { results: [true, true, true, false, true, true, true, false] },
+              harness: `
+                const rl = createRateLimiter(3, 1);
+                const r = [];
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(100000));
+                r.push(rl.tryAcquire(100000));
+                r.push(rl.tryAcquire(100000));
+                r.push(rl.tryAcquire(100000));
+                globalThis.__result = { results: r };
+              `,
+            },
+            {
+              description: '[hidden] independent instances do not share state',
+              input: [],
+              expected: { a: [true, true, false], b: [true, true, false] },
+              hidden: true,
+              harness: `
+                const a = createRateLimiter(2, 1);
+                const b = createRateLimiter(2, 1);
+                globalThis.__result = {
+                  a: [a.tryAcquire(0), a.tryAcquire(0), a.tryAcquire(0)],
+                  b: [b.tryAcquire(0), b.tryAcquire(0), b.tryAcquire(0)],
+                };
+              `,
+            },
+            {
+              description: '[hidden] higher refill rate — 5/sec',
+              input: [],
+              expected: { results: [true, true, false, true, true, true] },
+              hidden: true,
+              harness: `
+                const rl = createRateLimiter(2, 5);
+                const r = [];
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(200));
+                r.push(rl.tryAcquire(400));
+                r.push(rl.tryAcquire(800));
+                globalThis.__result = { results: r };
+              `,
+            },
+            {
+              description: '[hidden] capacity 1 limiter — strict serialization',
+              input: [],
+              expected: { results: [true, false, true, false, true] },
+              hidden: true,
+              harness: `
+                const rl = createRateLimiter(1, 2);
+                const r = [];
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(500));
+                r.push(rl.tryAcquire(500));
+                r.push(rl.tryAcquire(1000));
+                globalThis.__result = { results: r };
+              `,
+            },
+            {
+              description: '[hidden] fractional accumulation across many small calls',
+              input: [],
+              expected: { results: [true, true, false, false, false, true] },
+              hidden: true,
+              harness: `
+                const rl = createRateLimiter(2, 1);
+                const r = [];
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(0));
+                r.push(rl.tryAcquire(250));
+                r.push(rl.tryAcquire(500));
+                r.push(rl.tryAcquire(750));
+                r.push(rl.tryAcquire(1000));
+                globalThis.__result = { results: r };
+              `,
+            },
+          ],
+          timeoutMs: 1000,
+        },
+      },
+    },
+    antiCheatTier: 'T1',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'code',
+    hints: [
+      { level: 1, text: 'Track two pieces of state inside the closure: `tokens` (a number, possibly fractional) and `lastNowMs`.' },
+      { level: 2, text: 'On each call: compute elapsed seconds since `lastNowMs`, add `elapsed * refillPerSec` to `tokens`, cap at `capacity`, then update `lastNowMs = nowMs`.' },
+      { level: 3, text: 'Check `tokens >= 1` before consuming. Use `tokens -= 1` (not `tokens = 0`) so partial refills carry over correctly.' },
+    ],
+    active: true,
+  },
 ];
 
 export const SEED_USERS: User[] = [

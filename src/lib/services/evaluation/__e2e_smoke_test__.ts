@@ -592,6 +592,151 @@ function findDuplicates(arr) {
   // Empty
   await runAutoOnly('CH-27', '{}', 0, 5);
 
+  console.log('\n[CH-28 — CPF Validator]');
+  const cpfCorrect = `
+function isValidCPF(cpf) {
+  const digits = String(cpf || '').replace(/\\D/g, '');
+  if (digits.length !== 11) return false;
+  if (/^(\\d)\\1{10}$/.test(digits)) return false;
+  function calc(len) {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += parseInt(digits[i], 10) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  }
+  return calc(9) === parseInt(digits[9], 10) && calc(10) === parseInt(digits[10], 10);
+}
+`;
+  await runChallenge('CH-28', cpfCorrect, 100, 100);
+
+  // Broken: skips the all-same check (so 11111111111 would pass the math)
+  const cpfNoAllSame = `
+function isValidCPF(cpf) {
+  const digits = String(cpf || '').replace(/\\D/g, '');
+  if (digits.length !== 11) return false;
+  function calc(len) {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += parseInt(digits[i], 10) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  }
+  return calc(9) === parseInt(digits[9], 10) && calc(10) === parseInt(digits[10], 10);
+}
+`;
+  // 11/12 pass — fails only the all-same hidden test (both 1s and 0s share that bug)
+  await runChallenge('CH-28', cpfNoAllSame, 70, 95);
+
+  // Broken: always returns true
+  await runChallenge(
+    'CH-28',
+    `function isValidCPF(cpf) { return true; }`,
+    20,
+    60
+  );
+
+  console.log('\n[CH-29 — Prompt Injection Triage]');
+  await runChallenge(
+    'CH-29',
+    JSON.stringify({
+      answers: {
+        q1: 'vulnerable',
+        q2: 'safe',
+        q3: 'vulnerable',
+        q4: 'safe',
+        q5: 'vulnerable',
+        q6: ['structured-roles', 'output-encoding', 'least-privilege-tools', 'input-validation'],
+      },
+    }),
+    100,
+    100
+  );
+
+  // Wrong on q6 only (picked the cosmetic defenses) → ~71%
+  await runChallenge(
+    'CH-29',
+    JSON.stringify({
+      answers: {
+        q1: 'vulnerable',
+        q2: 'safe',
+        q3: 'vulnerable',
+        q4: 'safe',
+        q5: 'vulnerable',
+        q6: ['longer-system-prompt', 'client-side-keyword-filter'],
+      },
+    }),
+    60,
+    80
+  );
+
+  // All wrong
+  await runChallenge(
+    'CH-29',
+    JSON.stringify({
+      answers: {
+        q1: 'safe',
+        q2: 'vulnerable',
+        q3: 'safe',
+        q4: 'vulnerable',
+        q5: 'safe',
+        q6: ['longer-system-prompt'],
+      },
+    }),
+    0,
+    5
+  );
+
+  console.log('\n[CH-30 — Token Bucket Rate Limiter]');
+  const bucketCorrect = `
+function createRateLimiter(capacity, refillPerSec) {
+  let tokens = capacity;
+  let lastNowMs = null;
+  return {
+    tryAcquire(nowMs) {
+      if (lastNowMs !== null) {
+        const elapsedSec = (nowMs - lastNowMs) / 1000;
+        tokens = Math.min(capacity, tokens + elapsedSec * refillPerSec);
+      }
+      lastNowMs = nowMs;
+      if (tokens >= 1) {
+        tokens -= 1;
+        return true;
+      }
+      return false;
+    }
+  };
+}
+`;
+  await runChallenge('CH-30', bucketCorrect, 100, 100);
+
+  // Broken: doesn't cap refill — long sleep stockpiles tokens
+  const bucketNoCap = `
+function createRateLimiter(capacity, refillPerSec) {
+  let tokens = capacity;
+  let lastNowMs = null;
+  return {
+    tryAcquire(nowMs) {
+      if (lastNowMs !== null) {
+        const elapsedSec = (nowMs - lastNowMs) / 1000;
+        tokens = tokens + elapsedSec * refillPerSec;
+      }
+      lastNowMs = nowMs;
+      if (tokens >= 1) { tokens -= 1; return true; }
+      return false;
+    }
+  };
+}
+`;
+  // Fails the cap test → ~7/8 = 87
+  await runChallenge('CH-30', bucketNoCap, 70, 90);
+
+  // Broken: always allows
+  const bucketAlways = `
+function createRateLimiter(capacity, refillPerSec) {
+  return { tryAcquire(nowMs) { return true; } };
+}
+`;
+  await runChallenge('CH-30', bucketAlways, 0, 50);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {
     process.exit(1);

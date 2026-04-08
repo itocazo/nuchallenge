@@ -1,11 +1,11 @@
 /**
- * Real UI smoke test for the 9 auto-graded challenges (CH-09, CH-07, CH-13,
- * CH-19, CH-20, CH-21, CH-22, CH-23, CH-24).
+ * Real UI smoke test for the 12 auto-graded challenges (CH-09, CH-07, CH-13,
+ * CH-19, CH-20, CH-21, CH-22, CH-23, CH-24, CH-28, CH-29, CH-30).
  *
  * Hits the running dev server's HTTP API end-to-end:
  *   1. POST /api/challenges/:id/start  → creates an attempt
  *   2. POST /api/challenges/:id/submit → triggers inline evaluation
- *   3. GET  /api/attempts/:attemptId   → reads the persisted score
+ *   3. read attempts row from DB     → verifies the persisted score
  *
  * Auth: mints a real next-auth JWT for a demo user (same trick used by
  * smoke-admin-flows.ts) so we don't have to juggle CSRF + the credentials
@@ -14,13 +14,13 @@
  * Prereqs:
  *   - Dev server running on http://localhost:3001 (configurable via SMOKE_BASE)
  *   - DATABASE_URL + NEXTAUTH_SECRET in env
- *   - DB seeded with the 27 challenges (run `npx tsx src/db/seed.ts` first)
+ *   - DB seeded with the 30 challenges (run `npx tsx src/db/seed.ts` first)
  *
  * Run with:
- *   set -a && source .env.local && set +a && npx tsx scripts/smoke-ui-9.ts
+ *   set -a && source .env.local && set +a && npx tsx scripts/smoke-ui-12.ts
  */
 import { db } from '../src/db';
-import { users, attempts } from '../src/db/schema';
+import { users, attempts, pointTransactions } from '../src/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { encode } from 'next-auth/jwt';
 
@@ -146,6 +146,55 @@ const CASES: SmokeCase[] = [
     minScore: 100,
   },
   {
+    id: 'CH-28',
+    submission: `function isValidCPF(cpf) {
+  const digits = String(cpf || '').replace(/\\D/g, '');
+  if (digits.length !== 11) return false;
+  if (/^(\\d)\\1{10}$/.test(digits)) return false;
+  function calc(len) {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += parseInt(digits[i], 10) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  }
+  return calc(9) === parseInt(digits[9], 10) && calc(10) === parseInt(digits[10], 10);
+}`,
+    minScore: 100,
+  },
+  {
+    id: 'CH-29',
+    submission: JSON.stringify({
+      answers: {
+        q1: 'vulnerable',
+        q2: 'safe',
+        q3: 'vulnerable',
+        q4: 'safe',
+        q5: 'vulnerable',
+        q6: ['structured-roles', 'output-encoding', 'least-privilege-tools', 'input-validation'],
+      },
+    }),
+    minScore: 100,
+  },
+  {
+    id: 'CH-30',
+    submission: `function createRateLimiter(capacity, refillPerSec) {
+  let tokens = capacity;
+  let lastNowMs = null;
+  return {
+    tryAcquire(nowMs) {
+      if (lastNowMs !== null) {
+        const elapsedSec = (nowMs - lastNowMs) / 1000;
+        tokens = Math.min(capacity, tokens + elapsedSec * refillPerSec);
+      }
+      lastNowMs = nowMs;
+      if (tokens >= 1) { tokens -= 1; return true; }
+      return false;
+    }
+  };
+}`,
+    minScore: 100,
+  },
+  {
     id: 'CH-24',
     submission: `function createIdempotencyStore() {
   const cache = new Map();
@@ -184,11 +233,29 @@ async function mintSessionCookie(userId: string, email: string, name: string) {
   return `authjs.session-token=${token}`;
 }
 
-async function runOne(c: SmokeCase, cookie: string, userId: string) {
-  // Clear prior attempts for this user+challenge to avoid hitting the 3-attempt cap
+async function clearAttemptsFor(userId: string, challengeIds: string[]) {
+  // FK: point_transactions.attempt_id → attempts.id, so cascade by hand.
+  const rows = await db
+    .select({ id: attempts.id })
+    .from(attempts)
+    .where(
+      and(
+        eq(attempts.userId, userId),
+        inArray(attempts.challengeId, challengeIds)
+      )
+    );
+  if (rows.length === 0) return;
+  const attemptIds = rows.map((r) => r.id);
   await db
-    .delete(attempts)
-    .where(and(eq(attempts.userId, userId), eq(attempts.challengeId, c.id)));
+    .delete(pointTransactions)
+    .where(inArray(pointTransactions.attemptId, attemptIds));
+  await db.delete(attempts).where(inArray(attempts.id, attemptIds));
+}
+
+async function runOne(c: SmokeCase, cookie: string, userId: string) {
+  // Clear prior attempts (and their point_transactions) for this user+challenge
+  // so the smoke can rerun cleanly without hitting the 3-attempt cap.
+  await clearAttemptsFor(userId, [c.id]);
 
   const startRes = await fetch(`${BASE}/api/challenges/${c.id}/start`, {
     method: 'POST',
@@ -249,18 +316,9 @@ async function main() {
   }
   console.log(`smoke user: ${user.email} (${user.id})`);
 
-  // Wipe ALL attempts for the smoke user up front so reruns are clean
-  await db
-    .delete(attempts)
-    .where(
-      and(
-        eq(attempts.userId, user.id),
-        inArray(
-          attempts.challengeId,
-          CASES.map((c) => c.id)
-        )
-      )
-    );
+  // Wipe ALL attempts (and their point_transactions) for the smoke user
+  // up front so reruns are clean.
+  await clearAttemptsFor(user.id, CASES.map((c) => c.id));
 
   const cookie = await mintSessionCookie(user.id, user.email, user.name);
 
