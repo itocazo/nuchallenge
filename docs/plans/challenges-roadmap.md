@@ -92,9 +92,9 @@ The dispatcher returns the same `EvaluationOutput` shape that `scoring.ts` alrea
 
 | ID    | Title                                  | Type           | Grader               | Status   |
 |-------|----------------------------------------|----------------|----------------------|----------|
-| CH-25 | Refactor Spaghetti Code                | advanced       | hybrid (sandbox+ai)  | planned  |
-| CH-26 | Optimize a Slow Function               | advanced       | hybrid (bench+ai)    | planned  |
-| CH-27 | AI Code Review Checklist               | intermediate   | hybrid               | planned  |
+| CH-25 | Refactor Spaghetti Code                | advanced       | hybrid (sandbox+ai)  | **done** |
+| CH-26 | Optimize a Slow Function               | advanced       | hybrid (bench+ai)    | **done** |
+| CH-27 | AI Code Review Checklist               | intermediate   | hybrid               | **done** |
 
 ---
 
@@ -284,9 +284,27 @@ DATABASE_URL=... npx tsx scripts/verify-new-challenges.ts
 - Try a real submission via the UI for each of the 9 auto-graded challenges
 - Inspect and improve UI for code-sandbox challenges (currently a textarea)
 
-### Session 4 (planned)
-- [ ] Wave 3: hybrid challenges
-- [ ] CH-25, CH-26, CH-27
+### Session 4 (DONE)
+- [x] Code-sandbox UI fix: `CodeEditor` (tab-aware textarea + line numbers) +
+  `VisibleTestCases` panel (TDD-style), wired into the workspace page.
+- [x] Wave 3 hybrid challenges: CH-25, CH-26, CH-27 — all use `evaluationMethod: 'hybrid'`,
+  blended 70% auto / 30% AI by the existing dispatcher.
+- [x] Auto-portion smoke tests for hybrid challenges (39 e2e cases total, all green).
+- [x] Real HTTP smoke for the 9 auto-graded challenges via `scripts/smoke-ui-9.ts` —
+  mints a next-auth session cookie, hits /start + /submit, reads the persisted
+  attempt, all 9 returned `score=100 status=completed`.
+
+**Artifacts produced this session:**
+- `src/components/workspace/CodeEditor.tsx` (new)
+- `src/components/workspace/VisibleTestCases.tsx` (new)
+- `src/app/challenges/[id]/workspace/page.tsx` (conditional editor by grader type)
+- 3 new entries in `src/lib/data.ts`: CH-25, CH-26, CH-27
+- `src/lib/services/evaluation/__e2e_smoke_test__.ts` (29 → 39 tests, with `runAutoOnly`)
+- `scripts/smoke-ui-9.ts` (new — real HTTP end-to-end smoke for 9 auto-graded challenges)
+
+### Session 5 (planned)
+- [ ] Real HTTP smoke for CH-25/26/27 (needs ANTHROPIC_API_KEY for the AI side
+  of the hybrid path; auto portion already covered by `__e2e_smoke_test__.ts`).
 
 ### Session 5+ (stretch)
 - [ ] Replace Node `vm` with `isolated-vm` for production safety

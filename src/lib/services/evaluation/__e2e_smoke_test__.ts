@@ -11,10 +11,57 @@
 
 import { SEED_CHALLENGES } from '../../data';
 import { dispatchEvaluation } from './dispatch';
+import { runAutoGrader, toEvaluationOutput } from './auto-graders';
 import type { ChallengeGraderConfig } from '../../types';
 
 let passed = 0;
 let failed = 0;
+
+/**
+ * Runs only the auto-grader portion of a challenge — bypasses the dispatcher
+ * so hybrid challenges can be smoke-tested without an Anthropic API key.
+ * The dispatcher's hybrid blending logic is already covered by its own path
+ * once an API key is present.
+ */
+async function runAutoOnly(
+  id: string,
+  submission: string,
+  expectScoreMin: number,
+  expectScoreMax: number
+) {
+  const challenge = SEED_CHALLENGES.find((c) => c.id === id);
+  if (!challenge) {
+    failed++;
+    console.log(`  ✗ ${id}: not found in SEED_CHALLENGES`);
+    return;
+  }
+  if (!challenge.rubric.grader) {
+    failed++;
+    console.log(`  ✗ ${id}: no grader config`);
+    return;
+  }
+  try {
+    const raw = runAutoGrader(submission, challenge.rubric.grader);
+    const out = toEvaluationOutput(raw, challenge.rubric.criteria);
+    const ok =
+      out.overallScore >= expectScoreMin && out.overallScore <= expectScoreMax;
+    if (ok) {
+      passed++;
+      console.log(
+        `  ✓ ${id} auto-score=${out.overallScore} (expected ${expectScoreMin}-${expectScoreMax})`
+      );
+    } else {
+      failed++;
+      console.log(
+        `  ✗ ${id} auto-score=${out.overallScore} expected ${expectScoreMin}-${expectScoreMax}`
+      );
+      console.log(`    feedback: ${out.feedback.slice(0, 200)}`);
+    }
+  } catch (e) {
+    failed++;
+    console.log(`  ✗ ${id} threw: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
 
 async function runChallenge(
   id: string,
@@ -401,6 +448,149 @@ function createIdempotencyStore() {
 }
 `;
   await runChallenge('CH-24', idempAlwaysRun, 10, 60);
+
+  console.log('\n[CH-25 — Refactor Spaghetti Code (hybrid, auto portion)]');
+  const refactorCorrect = `
+const DISCOUNT_THRESHOLD = 100;
+const DISCOUNT_RATE = 0.97;
+
+function discountedAmount(amount) {
+  return amount > DISCOUNT_THRESHOLD ? amount * DISCOUNT_RATE : amount;
+}
+
+function summarizeOrders(orders) {
+  const byStatus = { paid: 0, cancelled: 0, failed: 0 };
+  let revenue = 0;
+  for (const order of orders) {
+    if (order.status === 'paid') {
+      byStatus.paid += 1;
+      revenue += discountedAmount(order.amount);
+    } else if (order.status === 'cancelled') {
+      byStatus.cancelled += 1;
+    } else if (order.status === 'failed') {
+      byStatus.failed += 1;
+    }
+  }
+  return {
+    totalRevenue: Math.round(revenue * 100) / 100,
+    byStatus,
+    count: orders.length,
+  };
+}
+`;
+  await runAutoOnly('CH-25', refactorCorrect, 100, 100);
+
+  // Broken refactor: forgets discount on amounts > 100
+  const refactorBroken = `
+function summarizeOrders(orders) {
+  const byStatus = { paid: 0, cancelled: 0, failed: 0 };
+  let revenue = 0;
+  for (const order of orders) {
+    if (order.status === 'paid') { byStatus.paid += 1; revenue += order.amount; }
+    else if (order.status === 'cancelled') { byStatus.cancelled += 1; }
+    else if (order.status === 'failed') { byStatus.failed += 1; }
+  }
+  return { totalRevenue: Math.round(revenue * 100) / 100, byStatus, count: orders.length };
+}
+`;
+  await runAutoOnly('CH-25', refactorBroken, 30, 80);
+
+  // Forbidden token cheat
+  await runAutoOnly(
+    'CH-25',
+    `function summarizeOrders(o) { return process.env.X; }`,
+    0,
+    0
+  );
+
+  console.log('\n[CH-26 — Optimize a Slow Function (hybrid, auto portion)]');
+  // Linear-time correct
+  const dupLinear = `
+// Replaced O(n^2) nested loops with a single Set pass — O(n) time, O(n) space.
+function findDuplicates(arr) {
+  const seen = new Set();
+  const dupes = new Set();
+  for (const v of arr) {
+    if (seen.has(v)) dupes.add(v);
+    else seen.add(v);
+  }
+  return Array.from(dupes);
+}
+`;
+  await runAutoOnly('CH-26', dupLinear, 100, 100);
+
+  // Quadratic — should fail the perf test (TLE) but pass correctness
+  const dupQuadratic = `
+function findDuplicates(arr) {
+  const dupes = [];
+  for (let i = 0; i < arr.length; i++) {
+    for (let j = i + 1; j < arr.length; j++) {
+      if (arr[i] === arr[j] && !dupes.includes(arr[i])) {
+        dupes.push(arr[i]);
+      }
+    }
+  }
+  return dupes;
+}
+`;
+  // Expect: 6/7 pass (correctness OK, perf test exceeds budget) → ~85
+  await runAutoOnly('CH-26', dupQuadratic, 70, 90);
+
+  // Wrong: returns [1, 1, 1] for [1, 1, 1] (no dedup)
+  const dupNoDedup = `
+function findDuplicates(arr) {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    for (let j = i + 1; j < arr.length; j++) {
+      if (arr[i] === arr[j]) out.push(arr[i]);
+    }
+  }
+  return out;
+}
+`;
+  await runAutoOnly('CH-26', dupNoDedup, 0, 90);
+
+  console.log('\n[CH-27 — AI Code Review Checklist (hybrid, auto portion)]');
+  // All required fields correct
+  await runAutoOnly(
+    'CH-27',
+    JSON.stringify({
+      issuesFound: ['sql-injection', 'missing-input-validation', 'missing-auth', 'no-error-handling', 'no-idempotency'],
+      severity: 'critical',
+      categories: ['security', 'validation', 'reliability'],
+      recommendations: 'Use parameterized queries, validate amount and card token, require auth, wrap the provider call in try/catch, and key on an idempotency header.',
+    }),
+    100,
+    100
+  );
+
+  // Reordered arrays still correct (order-insensitive)
+  await runAutoOnly(
+    'CH-27',
+    JSON.stringify({
+      issuesFound: ['no-idempotency', 'sql-injection', 'no-error-handling', 'missing-auth', 'missing-input-validation'],
+      severity: 'critical',
+      categories: ['reliability', 'security', 'validation'],
+      recommendations: 'reordered',
+    }),
+    100,
+    100
+  );
+
+  // Missing one issue + wrong severity → 1/3 fields correct
+  await runAutoOnly(
+    'CH-27',
+    JSON.stringify({
+      issuesFound: ['sql-injection', 'missing-auth', 'no-error-handling', 'no-idempotency'],
+      severity: 'high',
+      categories: ['security', 'validation', 'reliability'],
+    }),
+    20,
+    50
+  );
+
+  // Empty
+  await runAutoOnly('CH-27', '{}', 0, 5);
 
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {

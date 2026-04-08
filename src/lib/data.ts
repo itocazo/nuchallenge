@@ -993,6 +993,257 @@ export const SEED_CHALLENGES: Challenge[] = [
     ],
     active: true,
   },
+  {
+    id: 'CH-25',
+    title: 'Refactor Spaghetti Code',
+    description: 'Refactor a tangled order-processing function into clean, pure code while preserving exact behavior. Hybrid grading: sandbox tests verify behavior, AI judges code quality.',
+    instructions: '## Your Task\n\nThe Cards team inherited this `summarizeOrders` function from a contractor. It works, but it\'s a mess: nested ifs, mutated arguments, magic numbers, and unclear naming. Refactor it without changing observable behavior.\n\n### Original (do NOT submit this)\n\n```javascript\nfunction summarizeOrders(orders) {\n  let r = 0;\n  let s = { p: 0, c: 0, f: 0 };\n  for (let i = 0; i < orders.length; i++) {\n    let o = orders[i];\n    if (o.s == "paid") {\n      s.p = s.p + 1;\n      if (o.a > 100) { r = r + o.a * 0.97; }\n      else { r = r + o.a; }\n    } else if (o.s == "cancelled") { s.c = s.c + 1; }\n    else if (o.s == "failed") { s.f = s.f + 1; }\n  }\n  return { totalRevenue: Math.round(r * 100) / 100, byStatus: { paid: s.p, cancelled: s.c, failed: s.f }, count: orders.length };\n}\n```\n\n### Contract you must preserve\n\n```javascript\nsummarizeOrders([\n  { id: 1, status: "paid",      amount: 50  },\n  { id: 2, status: "paid",      amount: 200 }, // gets the > 100 discount: 200 * 0.97 = 194\n  { id: 3, status: "cancelled", amount: 80  },\n  { id: 4, status: "failed",    amount: 30  },\n]);\n// → { totalRevenue: 244.00, byStatus: { paid: 2, cancelled: 1, failed: 1 }, count: 4 }\n```\n\nRules:\n- Same name `summarizeOrders`, same input shape, same output shape.\n- The 3% discount applies to **paid** orders with `amount > 100` (strictly greater).\n- Revenue is rounded to 2 decimals.\n- `byStatus` always includes all three keys (`paid`, `cancelled`, `failed`), even if zero.\n- Empty input → `{ totalRevenue: 0, byStatus: { paid: 0, cancelled: 0, failed: 0 }, count: 0 }`.\n\n### What we grade\n\n- **Auto (70%):** sandbox runs your `summarizeOrders` against 8 test cases (some hidden).\n- **AI (30%):** judges naming, structure, purity (no mutation), and clarity.\n\n### Submission\n\n```javascript\nfunction summarizeOrders(orders) {\n  // your refactored code here\n}\n```\n\n### Sandbox restrictions\nNo `require`, `process`, network calls, or dynamic code execution. Pure JavaScript only.',
+    tags: ['Coding', 'Tech Architecture', 'Critical Thinking'],
+    difficulty: 'advanced',
+    timeMinutes: 40,
+    pointsBase: 260,
+    submissionFormat: 'JavaScript function',
+    evaluationMethod: 'hybrid',
+    rubric: {
+      criteria: [
+        { name: 'Behavior preservation', weight: 70, description: 'Sandbox tests verify the refactor matches the original contract exactly.' },
+        { name: 'Code quality', weight: 30, description: 'AI judges naming, structure, purity, and clarity vs. the original spaghetti.' },
+      ],
+      grader: {
+        type: 'code-sandbox',
+        config: {
+          language: 'javascript',
+          entrypoint: 'summarizeOrders',
+          testCases: [
+            {
+              description: 'mixed orders with discount',
+              input: [[
+                { id: 1, status: 'paid', amount: 50 },
+                { id: 2, status: 'paid', amount: 200 },
+                { id: 3, status: 'cancelled', amount: 80 },
+                { id: 4, status: 'failed', amount: 30 },
+              ]],
+              expected: { totalRevenue: 244.00, byStatus: { paid: 2, cancelled: 1, failed: 1 }, count: 4 },
+            },
+            {
+              description: 'empty order list',
+              input: [[]],
+              expected: { totalRevenue: 0, byStatus: { paid: 0, cancelled: 0, failed: 0 }, count: 0 },
+            },
+            {
+              description: 'all paid below threshold (no discount)',
+              input: [[
+                { id: 1, status: 'paid', amount: 100 },
+                { id: 2, status: 'paid', amount: 50 },
+              ]],
+              expected: { totalRevenue: 150.00, byStatus: { paid: 2, cancelled: 0, failed: 0 }, count: 2 },
+            },
+            {
+              description: '[hidden] threshold boundary — exactly 100 gets no discount',
+              input: [[{ id: 1, status: 'paid', amount: 100 }]],
+              expected: { totalRevenue: 100.00, byStatus: { paid: 1, cancelled: 0, failed: 0 }, count: 1 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] threshold boundary — 100.01 gets discount',
+              input: [[{ id: 1, status: 'paid', amount: 100.01 }]],
+              expected: { totalRevenue: 97.01, byStatus: { paid: 1, cancelled: 0, failed: 0 }, count: 1 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] all cancelled',
+              input: [[
+                { id: 1, status: 'cancelled', amount: 50 },
+                { id: 2, status: 'cancelled', amount: 200 },
+              ]],
+              expected: { totalRevenue: 0, byStatus: { paid: 0, cancelled: 2, failed: 0 }, count: 2 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] only failed',
+              input: [[
+                { id: 1, status: 'failed', amount: 999 },
+              ]],
+              expected: { totalRevenue: 0, byStatus: { paid: 0, cancelled: 0, failed: 1 }, count: 1 },
+              hidden: true,
+            },
+            {
+              description: '[hidden] large mixed batch',
+              input: [[
+                { id: 1, status: 'paid', amount: 500 },     // 500*0.97 = 485
+                { id: 2, status: 'paid', amount: 250 },     // 250*0.97 = 242.50
+                { id: 3, status: 'paid', amount: 99 },      // 99
+                { id: 4, status: 'cancelled', amount: 100 },
+                { id: 5, status: 'failed', amount: 100 },
+                { id: 6, status: 'paid', amount: 1000 },    // 1000*0.97 = 970
+              ]],
+              expected: { totalRevenue: 1796.50, byStatus: { paid: 4, cancelled: 1, failed: 1 }, count: 6 },
+              hidden: true,
+            },
+          ],
+          timeoutMs: 1000,
+        },
+      },
+    },
+    antiCheatTier: 'T1',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'code',
+    hints: [
+      { level: 1, text: 'Start by giving every variable a real name: `revenue` instead of `r`, `statusCounts` instead of `s`.' },
+      { level: 2, text: 'Extract the discount math into a small pure helper like `discountedAmount(amount)`. Use a constant `DISCOUNT_THRESHOLD = 100` and `DISCOUNT_RATE = 0.97`.' },
+      { level: 3, text: 'Prefer `reduce` or a simple loop that builds up a fresh object. Don\'t mutate the input `orders` array.' },
+    ],
+    active: true,
+  },
+  {
+    id: 'CH-26',
+    title: 'Optimize a Slow Function',
+    description: 'Replace a quadratic duplicate-finder with a linear-time implementation. Hybrid grading: sandbox tests verify correctness on a 10k-element input under a tight timeout, AI judges the explanation.',
+    instructions: '## Your Task\n\nThis function ships in a hot path that runs on every transaction batch:\n\n```javascript\nfunction findDuplicates(arr) {\n  const dupes = [];\n  for (let i = 0; i < arr.length; i++) {\n    for (let j = i + 1; j < arr.length; j++) {\n      if (arr[i] === arr[j] && !dupes.includes(arr[i])) {\n        dupes.push(arr[i]);\n      }\n    }\n  }\n  return dupes;\n}\n```\n\nIt\'s O(n²) and times out on batches of 10k+ items. Rewrite it to be O(n) (or O(n log n)) while preserving the exact contract.\n\n### Contract\n\n```javascript\nfindDuplicates([1, 2, 3, 2, 4, 1, 5]); // → [1, 2]   (or [2, 1] — order doesn\'t matter)\nfindDuplicates([1, 2, 3]);             // → []\nfindDuplicates([]);                    // → []\nfindDuplicates(["a", "b", "a", "c"]);  // → ["a"]\n```\n\nRules:\n- Each duplicate value appears **once** in the output (no `[1, 1]` for `[1, 1, 1]`).\n- Output order is irrelevant — the grader compares as a set.\n- Works for both numbers and strings.\n- Must finish a 10,000-element input in under 1 second (the sandbox enforces this).\n\n### What we grade\n\n- **Auto (70%):** sandbox runs correctness tests + a 10k-item perf test under a 1s budget.\n- **AI (30%):** judges your explanation (include a brief comment at the top describing the complexity improvement).\n\n### Submission\n\n```javascript\n// e.g. // Replaced O(n²) nested loops with a single Set pass — now O(n) time, O(n) space.\nfunction findDuplicates(arr) {\n  // your code here\n}\n```\n\n### Sandbox restrictions\nNo `require`, `process`, network calls, or dynamic code execution. Pure JavaScript only.',
+    tags: ['Coding', 'Critical Thinking', 'Tech Architecture'],
+    difficulty: 'advanced',
+    timeMinutes: 30,
+    pointsBase: 240,
+    submissionFormat: 'JavaScript function',
+    evaluationMethod: 'hybrid',
+    rubric: {
+      criteria: [
+        { name: 'Correctness + perf', weight: 70, description: 'Sandbox tests verify both correctness on small inputs and that the implementation handles 10k items within the 1s timeout.' },
+        { name: 'Explanation quality', weight: 30, description: 'AI judges the comment/explanation of the complexity improvement.' },
+      ],
+      grader: {
+        type: 'code-sandbox',
+        config: {
+          language: 'javascript',
+          entrypoint: 'findDuplicates',
+          testCases: [
+            {
+              description: 'small array with two duplicates',
+              input: [],
+              expected: { sorted: ['1', '2'], len: 2 },
+              harness: `
+                const r = findDuplicates([1, 2, 3, 2, 4, 1, 5]);
+                globalThis.__result = { sorted: Array.from(r).map(String).sort(), len: r.length };
+              `,
+            },
+            {
+              description: 'no duplicates',
+              input: [],
+              expected: { sorted: [], len: 0 },
+              harness: `
+                const r = findDuplicates([1, 2, 3, 4, 5]);
+                globalThis.__result = { sorted: Array.from(r).map(String).sort(), len: r.length };
+              `,
+            },
+            {
+              description: 'empty array',
+              input: [],
+              expected: { sorted: [], len: 0 },
+              harness: `
+                const r = findDuplicates([]);
+                globalThis.__result = { sorted: Array.from(r).map(String).sort(), len: r.length };
+              `,
+            },
+            {
+              description: 'string values',
+              input: [],
+              expected: { sorted: ['a'], len: 1 },
+              harness: `
+                const r = findDuplicates(['a', 'b', 'a', 'c']);
+                globalThis.__result = { sorted: Array.from(r).map(String).sort(), len: r.length };
+              `,
+            },
+            {
+              description: '[hidden] each value appears at most once in the output',
+              input: [],
+              expected: { sorted: ['1'], len: 1 },
+              hidden: true,
+              harness: `
+                const r = findDuplicates([1, 1, 1, 1, 1]);
+                globalThis.__result = { sorted: Array.from(r).map(String).sort(), len: r.length };
+              `,
+            },
+            {
+              description: '[hidden] mixed numbers and strings',
+              input: [],
+              expected: { sorted: ['1', 'x'], len: 2 },
+              hidden: true,
+              harness: `
+                const r = findDuplicates([1, 'x', 2, 1, 'x', 3]);
+                globalThis.__result = { sorted: Array.from(r).map(String).sort(), len: r.length };
+              `,
+            },
+            {
+              description: '[hidden] performance — 60k items must finish under 250ms',
+              input: [],
+              expected: { count: 30000, ok: true },
+              hidden: true,
+              harness: `
+                const arr = [];
+                for (let i = 0; i < 30000; i++) { arr.push(i); arr.push(i); }
+                const start = Date.now();
+                const r = findDuplicates(arr);
+                const elapsed = Date.now() - start;
+                globalThis.__result = { count: new Set(r).size, ok: elapsed < 250 };
+              `,
+            },
+          ],
+          timeoutMs: 1000,
+        },
+      },
+    },
+    antiCheatTier: 'T1',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'code',
+    hints: [
+      { level: 1, text: 'A `Set` lets you check membership in O(1). Walk the array once, tracking what you\'ve seen.' },
+      { level: 2, text: 'Two sets work well: `seen` (everything you\'ve passed) and `dupes` (values you\'ve seen at least twice). Add to `dupes` when you encounter a value already in `seen`.' },
+      { level: 3, text: 'Return `Array.from(dupes)` at the end. Don\'t use `arr.includes(...)` inside a loop — that\'s the O(n²) trap you\'re escaping.' },
+    ],
+    active: true,
+  },
+  {
+    id: 'CH-27',
+    title: 'AI Code Review Checklist',
+    description: 'Review a snippet of payment-handling code and submit a structured review covering security, validation, and error-handling. Hybrid grading: structured checks the required fields, AI judges the recommendations.',
+    instructions: '## Your Task\n\nThe Payments team is rolling out a new endpoint. Review the snippet below and submit a structured code review.\n\n### Snippet under review\n\n```javascript\napp.post("/charge", (req, res) => {\n  const amount = req.body.amount;\n  const card = req.body.card;\n  db.query("INSERT INTO charges (amount, card) VALUES (" + amount + ", \'" + card + "\')");\n  paymentProvider.charge(card, amount);\n  res.json({ status: "ok" });\n});\n```\n\nThere are at least 5 issues. Identify them and propose fixes.\n\n### Submission shape (JSON)\n\n```json\n{\n  "issuesFound": ["sql-injection", "missing-input-validation", "missing-auth", "no-error-handling", "no-idempotency"],\n  "severity": "critical",\n  "categories": ["security", "validation", "reliability"],\n  "recommendations": "Free-text paragraph (2-4 sentences) explaining how you\'d fix the top issues. The AI judge reads this."\n}\n```\n\n### Required `issuesFound` values (case-sensitive, set comparison)\n\nThe auto-grader checks that your `issuesFound` array contains exactly these 5 strings (any order):\n- `sql-injection`\n- `missing-input-validation`\n- `missing-auth`\n- `no-error-handling`\n- `no-idempotency`\n\n### Required `severity`\n\nMust be exactly `"critical"` (the SQL injection alone is critical-severity).\n\n### Required `categories`\n\nMust contain exactly these 3 (any order):\n- `security`\n- `validation`\n- `reliability`\n\n### What we grade\n\n- **Auto (70%):** structured grader checks `issuesFound`, `severity`, and `categories` for exact set/value matches.\n- **AI (30%):** judges the `recommendations` paragraph for accuracy, depth, and concrete fixes.',
+    tags: ['Critical Thinking', 'Tech Architecture', 'Communication'],
+    difficulty: 'intermediate',
+    timeMinutes: 25,
+    pointsBase: 180,
+    submissionFormat: 'JSON',
+    evaluationMethod: 'hybrid',
+    rubric: {
+      criteria: [
+        { name: 'Issue identification', weight: 70, description: 'Structured grader checks issuesFound, severity, and categories fields.' },
+        { name: 'Recommendation quality', weight: 30, description: 'AI judges the natural-language recommendations paragraph.' },
+      ],
+      grader: {
+        type: 'structured',
+        config: {
+          expectedShape: 'object',
+          matchMode: 'exact',
+          answerKey: {
+            issuesFound: ['sql-injection', 'missing-input-validation', 'missing-auth', 'no-error-handling', 'no-idempotency'],
+            severity: 'critical',
+            categories: ['security', 'validation', 'reliability'],
+          },
+        },
+      },
+    },
+    antiCheatTier: 'T0',
+    prerequisites: [],
+    producesAsset: true,
+    assetType: 'document',
+    hints: [
+      { level: 1, text: 'String concatenation into a SQL query is the textbook SQL injection. The fix is parameterized queries.' },
+      { level: 2, text: 'There\'s no auth check on the endpoint — any caller can charge any card. There\'s also no validation that `amount` is a positive number or that `card` looks like a card token.' },
+      { level: 3, text: 'The DB insert and `paymentProvider.charge` are not idempotent — a retry would double-charge. There\'s also no try/catch around the provider call.' },
+    ],
+    active: true,
+  },
 ];
 
 export const SEED_USERS: User[] = [
