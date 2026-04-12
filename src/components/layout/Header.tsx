@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { cn, formatPoints, getInitials } from '@/lib/utils';
+import { useApi } from '@/lib/hooks/use-api';
 import { Compass, Trophy, UserCircle, Flame, ShieldCheck } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -17,6 +18,7 @@ export default function Header() {
   const { data: session } = useSession();
   const user = session?.user;
   const isAdmin = user?.platformRole?.includes('admin');
+  const { data: userStats } = useApi<{ pointsTotal: number }>(user ? '/api/users/me' : null);
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur-md">
@@ -65,7 +67,7 @@ export default function Header() {
         {user && (
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1 text-sm sm:flex">
-              <span className="tabular-nums font-semibold text-purple-600">{formatPoints(0)}</span>
+              <span className="tabular-nums font-semibold text-purple-600">{formatPoints(userStats?.pointsTotal ?? 0)}</span>
               <span className="text-gray-400">pts</span>
             </div>
 

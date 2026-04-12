@@ -54,8 +54,8 @@ export const SEED_CHALLENGES: Challenge[] = [
     },
     antiCheatTier: 'T0',
     prerequisites: [],
-    producesAsset: true,
-    assetType: 'document',
+    producesAsset: false,
+    assetType: null,
     hints: [
       { level: 1, text: 'Cross-check the PRD\'s "Problem" and "Success Metrics" sections against the concrete numbers in the feature brief. Anything qualitative where the brief gives you numbers is a red flag.' },
       { level: 2, text: 'Count the user stories in the draft, then count how many are in `As a <role>, I want <action> so that <outcome>` format.' },

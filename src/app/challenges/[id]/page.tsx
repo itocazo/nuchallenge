@@ -7,7 +7,7 @@ import { SEED_CHALLENGES } from '@/lib/data';
 import { Challenge } from '@/lib/types';
 import DifficultyBadge from '@/components/ui/DifficultyBadge';
 import TagPill from '@/components/ui/TagPill';
-import { ArrowLeft, Clock, Zap, Shield, BookOpen, CheckCircle2, Lock, Lightbulb, Loader2 } from 'lucide-react';
+import { ArrowLeft, Clock, Zap, Shield, BookOpen, CheckCircle2, Circle, Lock, Lightbulb, Loader2, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface ChallengeDetail extends Challenge {
@@ -15,6 +15,7 @@ interface ChallengeDetail extends Challenge {
   bestScore: number | null;
   attemptsRemaining: number;
   activeAttemptId: string | null;
+  completedPrereqIds: string[];
 }
 
 export default function ChallengeDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -65,6 +66,8 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
   };
 
   const attemptsRemaining = (data?.challenge as ChallengeDetail)?.attemptsRemaining ?? 3;
+  const completedPrereqIds = (data?.challenge as ChallengeDetail)?.completedPrereqIds ?? [];
+  const allPrereqsMet = prereqChallenges.length === 0 || prereqChallenges.every(p => p && completedPrereqIds.includes(p.id));
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -171,16 +174,32 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
             {prereqChallenges.length > 0 && (
               <div className="mt-4 border-t border-gray-100 pt-4">
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Prerequisites</div>
-                {prereqChallenges.map(prereq => prereq && (
-                  <Link
-                    key={prereq.id}
-                    href={`/challenges/${prereq.id}`}
-                    className="flex items-center gap-2 rounded-lg p-2 text-sm hover:bg-gray-50"
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    <span className="text-gray-700">{prereq.id}: {prereq.title}</span>
-                  </Link>
-                ))}
+                {prereqChallenges.map(prereq => {
+                  if (!prereq) return null;
+                  const met = completedPrereqIds.includes(prereq.id);
+                  return (
+                    <Link
+                      key={prereq.id}
+                      href={`/challenges/${prereq.id}`}
+                      className="flex items-center gap-2 rounded-lg p-2 text-sm hover:bg-gray-50"
+                    >
+                      {met
+                        ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                        : <Circle className="h-4 w-4 shrink-0 text-gray-300" />
+                      }
+                      <span className={met ? 'text-gray-700' : 'text-gray-400'}>
+                        {prereq.id}: {prereq.title}
+                        {!met && <span className="ml-1 text-xs text-amber-600">(not completed)</span>}
+                      </span>
+                    </Link>
+                  );
+                })}
+                {!allPrereqsMet && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    Complete the prerequisites above before starting.
+                  </p>
+                )}
               </div>
             )}
 
@@ -195,7 +214,7 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
 
             <button
               onClick={handleStart}
-              disabled={starting || attemptsRemaining === 0}
+              disabled={starting || attemptsRemaining === 0 || !allPrereqsMet}
               className="mt-4 flex w-full items-center justify-center rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 active:scale-[0.98] disabled:opacity-50"
             >
               {starting ? (

@@ -187,14 +187,16 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">Interests</h2>
-            <div className="flex flex-wrap gap-1.5">
-              {(interests ?? []).map(tag => (
-                <TagPill key={tag} tag={tag} size="sm" />
-              ))}
+          {interests && interests.length > 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h2 className="mb-3 text-sm font-semibold text-gray-900">Interests</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {interests.map(tag => (
+                  <TagPill key={tag} tag={tag} size="sm" />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-3 text-sm font-semibold text-gray-900">Stats</h2>

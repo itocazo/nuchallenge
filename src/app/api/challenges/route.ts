@@ -50,10 +50,15 @@ export async function GET(req: NextRequest) {
 
     // Build response with user status
     const challengeList = allChallenges.map(c => {
-      const userAttempt = userAttempts.find(a => a.challengeId === c.id);
+      const challengeAttempts = userAttempts.filter(a => a.challengeId === c.id);
+      const completedAttempt = challengeAttempts.find(a => a.status === 'completed');
+      const activeAttempt = challengeAttempts.find(a => a.status === 'in_progress');
+      // 'failed' / 'evaluating' attempts don't lock the challenge — user can still retry
       let userStatus: string = 'available';
-      if (userAttempt) {
-        userStatus = userAttempt.status === 'completed' ? 'completed' : 'in_progress';
+      if (completedAttempt) {
+        userStatus = 'completed';
+      } else if (activeAttempt) {
+        userStatus = 'in_progress';
       }
 
       // Check prerequisites
@@ -90,7 +95,7 @@ export async function GET(req: NextRequest) {
         prerequisites: c.prerequisites,
         producesAsset: c.producesAsset,
         userStatus,
-        bestScore: userAttempt?.qualityScore ? Number(userAttempt.qualityScore) : null,
+        bestScore: completedAttempt?.qualityScore ? Number(completedAttempt.qualityScore) : null,
         prerequisitesMet,
       };
     }).filter(Boolean);

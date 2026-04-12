@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/db';
 import { challenges, attempts, assets } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { jsonResponse, errorResponse, handleApiError, getAuthUser } from '@/lib/api-utils';
 
 export async function GET(
@@ -55,6 +55,23 @@ export async function GET(
       }
     }
 
+    // Determine which prerequisites the user has completed
+    const prereqIds = (challenge.prerequisites ?? []) as string[];
+    let completedPrereqIds: string[] = [];
+    if (user?.id && prereqIds.length > 0) {
+      const prereqAttempts = await db
+        .select({ challengeId: attempts.challengeId })
+        .from(attempts)
+        .where(
+          and(
+            eq(attempts.userId, user.id),
+            inArray(attempts.challengeId, prereqIds),
+            eq(attempts.status, 'completed')
+          )
+        );
+      completedPrereqIds = [...new Set(prereqAttempts.map(a => a.challengeId))];
+    }
+
     const completedAttempt = userAttempts.find(a => a.status === 'completed');
     const activeAttempt = userAttempts.find(a => a.status === 'in_progress');
     const attemptsCount = userAttempts.length;
@@ -66,6 +83,7 @@ export async function GET(
         bestScore: completedAttempt?.qualityScore ? Number(completedAttempt.qualityScore) : null,
         attemptsRemaining: Math.max(0, 3 - attemptsCount),
         activeAttemptId: activeAttempt?.id ?? null,
+        completedPrereqIds,
       },
       contextAssets,
     });
