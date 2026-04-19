@@ -40,6 +40,31 @@ function safeParseJson(text: string): unknown {
 }
 
 /**
+ * For list-mode submissions, accept plain text as well as JSON. Users
+ * writing findings for "Spot the Bad PRD"-style challenges should not
+ * have to hand-author valid JSON syntax — the fuzzy grader only cares
+ * about the text of each item, not the wrapper.
+ *
+ * Splits on blank lines first (paragraph-style), falling back to line
+ * breaks; strips common bullet/number prefixes; drops empty entries.
+ */
+function parseTextList(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  // Prefer paragraph splits (\n\n) when present — they match prose-style
+  // findings where a single item may itself contain a line break.
+  const hasBlankLines = /\n\s*\n/.test(trimmed);
+  const raw = hasBlankLines ? trimmed.split(/\n\s*\n+/) : trimmed.split(/\n+/);
+
+  return raw
+    .map((line) => line.trim())
+    // Strip leading bullet/number markers: "-", "*", "•", "1.", "1)", "(1)"
+    .map((line) => line.replace(/^\s*(?:[-*•]|\(?\d+[.)])\s+/, ''))
+    .filter((line) => line.length > 0);
+}
+
+/**
  * Returns true if the user's free-form text "matches" a canonical entry,
  * meaning enough of its keywords appear in the user's text.
  */
@@ -181,6 +206,28 @@ export function gradeStructured(
 ): AutoGraderResult {
   const parsed = safeParseJson(submissionText);
 
+  if (config.expectedShape === 'list') {
+    // List-mode accepts either a JSON array OR a plain-text list (bullets,
+    // numbered, or one-per-line). Object-mode still requires JSON because
+    // keyed fields have no unambiguous plain-text representation.
+    if (Array.isArray(parsed)) {
+      return gradeListMode(parsed, config);
+    }
+    const textList = parseTextList(submissionText);
+    if (textList.length > 0) {
+      return gradeListMode(textList, config);
+    }
+    return {
+      passed: 0,
+      total: (config.answerKey as AnswerKeyEntry[]).length,
+      score: 0,
+      testCases: [],
+      feedback:
+        'Submission is empty. Provide your findings as a list — one per line, as bullets, or as a JSON array.',
+    };
+  }
+
+  // Object mode: JSON required
   if (parsed === null) {
     return {
       passed: 0,
@@ -188,12 +235,8 @@ export function gradeStructured(
       score: 0,
       testCases: [],
       feedback:
-        'Submission is not valid JSON. Make sure to wrap arrays in `[]` and objects in `{}`, with double-quoted keys.',
+        'Submission is not valid JSON. Make sure to wrap objects in `{}` with double-quoted keys.',
     };
-  }
-
-  if (config.expectedShape === 'list') {
-    return gradeListMode(parsed, config);
   }
   return gradeObjectMode(parsed, config);
 }
