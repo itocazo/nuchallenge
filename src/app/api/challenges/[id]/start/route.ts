@@ -58,7 +58,10 @@ export async function POST(
         )
       );
 
-    if (previousAttempts.length >= 3) {
+    // Failed attempts (grader errors, malformed submissions) don't burn quota —
+    // only completed / in_progress / evaluating count toward the 3-attempt cap.
+    const countableAttempts = previousAttempts.filter(a => a.status !== 'failed');
+    if (countableAttempts.length >= 3) {
       return errorResponse('Maximum attempts reached for this challenge', 429);
     }
 

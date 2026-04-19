@@ -155,7 +155,8 @@ export async function GET(
       evaluation: attempt.evaluationResult,
       bonuses: bonusMap,
       scoreBreakdown,
-      attemptsRemaining: Math.max(0, 3 - allAttempts.length),
+      // Failed attempts don't burn quota — only completed / in_progress / evaluating count.
+      attemptsRemaining: Math.max(0, 3 - allAttempts.filter(a => a.status !== 'failed').length),
       evaluating: false,
     });
   } catch (error) {

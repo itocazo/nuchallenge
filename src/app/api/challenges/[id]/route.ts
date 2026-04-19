@@ -74,7 +74,9 @@ export async function GET(
 
     const completedAttempt = userAttempts.find(a => a.status === 'completed');
     const activeAttempt = userAttempts.find(a => a.status === 'in_progress');
-    const attemptsCount = userAttempts.length;
+    // Failed attempts (grader errors, malformed submissions) don't burn quota —
+    // only completed / in_progress / evaluating count toward the 3-attempt cap.
+    const attemptsCount = userAttempts.filter(a => a.status !== 'failed').length;
 
     return jsonResponse({
       challenge: {
