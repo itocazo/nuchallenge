@@ -28,6 +28,7 @@ interface DispatchInput {
   rubric: {
     criteria: { name: string; weight: number; description: string }[];
     grader?: GraderConfig;
+    hybridWeights?: { auto: number; ai: number };
   };
   difficulty: string;
   evaluationMethod: 'ai-judge' | 'automated-test' | 'human-review' | 'hybrid';
@@ -39,6 +40,14 @@ interface HybridWeights {
 }
 
 const DEFAULT_HYBRID_WEIGHTS: HybridWeights = { auto: 0.7, ai: 0.3 };
+
+function resolveHybridWeights(override: HybridWeights | undefined): HybridWeights {
+  if (!override) return DEFAULT_HYBRID_WEIGHTS;
+  const sum = override.auto + override.ai;
+  // Tolerate small floating-point drift; fall back to defaults on nonsense.
+  if (sum <= 0 || Math.abs(sum - 1) > 0.01) return DEFAULT_HYBRID_WEIGHTS;
+  return override;
+}
 
 /**
  * Run the appropriate evaluator and return a unified result.
@@ -104,7 +113,7 @@ export async function dispatchEvaluation(
     ]);
 
     const autoOutput = toEvaluationOutput(autoResultRaw, rubric.criteria);
-    const w = DEFAULT_HYBRID_WEIGHTS;
+    const w = resolveHybridWeights(rubric.hybridWeights);
     const blendedScore =
       w.auto * autoOutput.overallScore + w.ai * aiResult.overallScore;
 

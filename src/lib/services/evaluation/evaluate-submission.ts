@@ -54,6 +54,7 @@ export const evaluateSubmission = inngest.createFunction(
         rubric: challenge.rubric as {
           criteria: { name: string; weight: number; description: string }[];
           grader?: GraderConfig;
+          hybridWeights?: { auto: number; ai: number };
         },
         difficulty: challenge.difficulty,
         evaluationMethod: challenge.evaluationMethod,

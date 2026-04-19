@@ -32,7 +32,12 @@ export interface Challenge {
   pointsBase: number;
   submissionFormat: string;
   evaluationMethod: EvaluationMethod;
-  rubric: { criteria: RubricCriterion[]; grader?: ChallengeGraderConfig };
+  rubric: {
+    criteria: RubricCriterion[];
+    grader?: ChallengeGraderConfig;
+    /** Optional override for hybrid evaluation weights. Defaults to 0.7 auto / 0.3 AI. Values should sum to 1. */
+    hybridWeights?: { auto: number; ai: number };
+  };
   antiCheatTier: AntiCheatTier;
   prerequisites: string[];
   producesAsset: boolean;
