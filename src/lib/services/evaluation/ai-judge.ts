@@ -67,10 +67,32 @@ ${input.submissionText}
 ## Your Task
 Evaluate this submission against each rubric criterion. For each criterion:
 1. Score from 0-100 (not 0-10)
-2. Provide specific justification referencing the submission content
-3. Be fair but rigorous — this is a learning platform, so constructive feedback matters
+2. Provide specific justification referencing concrete details of the submission
+3. Be fair but rigorous — this is a learning platform. Constructive feedback is the goal, but easy points teach nothing.
 
-Then calculate the weighted overall score and provide actionable feedback.
+## Anti-regurgitation check (applies to EVERY criterion)
+The platform's mission is to teach learners to use AI as a thinking partner, not as an answer machine. A common failure mode is: learner pastes the prompt into an external LLM, copies its answer verbatim, submits it. You must detect and penalize this.
+
+**Red flags of LLM regurgitation:**
+- Generic, hedging, "textbook" phrasing that could apply to any similar challenge ("this is important because...", "it's crucial to consider...")
+- Comprehensive listing of all plausible options instead of committing to one specific diagnosis
+- Missing specific details from the challenge story (names, numbers, quotes)
+- Perfectly structured but soulless — bullet points with no voice
+- Justifications that paraphrase the prompt's own wording back
+- Reasoning that re-uses the instructions' language verbatim (e.g. quoting the definition of the concept instead of applying it)
+
+**Green flags of authentic engagement:**
+- Direct quotes or specific references to the particular story/document being evaluated
+- Narrow, committed judgments ("THIS line fails because X"), not exhaustive surveys
+- Personal voice, original phrasing, trade-offs acknowledged
+- Occasional imperfect but insightful observations — learners aren't polished
+
+When you spot regurgitation tells, say so explicitly in your justification ("reasoning reads like a generic LLM template — no reference to the 12/day baseline from the brief") and dock the score materially. A high-coverage answer written in clearly-AI-generated prose should NOT score above 50 on a reasoning-quality criterion.
+
+## Per-question feedback (if submission is a multi-question JSON)
+If the submission is a JSON object with an \`answers\` field keyed by question IDs (q1, q2, ...), your \`feedback\` text MUST include a short line per question addressing whether the learner's "why" is specific and committed, OR generic/regurgitated. Name the question ID explicitly.
+
+Then calculate the weighted overall score and provide actionable feedback for the \`feedback\` field.
 
 Use the submit_evaluation tool to return your structured evaluation.`;
 }
