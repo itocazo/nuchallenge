@@ -19,6 +19,13 @@ async function seed() {
 
   console.log('Seeding challenges...');
   for (const challenge of SEED_CHALLENGES) {
+    // Guided-flow metadata is stashed in `contextTemplate` to avoid a schema
+    // migration. The advance endpoint reads back `{ flow, guidedConfig }`
+    // from this column.
+    const contextTemplate = challenge.flow
+      ? { flow: challenge.flow, guidedConfig: challenge.guidedConfig ?? null }
+      : null;
+
     const values = {
       id: challenge.id,
       title: challenge.title,
@@ -35,6 +42,7 @@ async function seed() {
       prerequisites: challenge.prerequisites,
       producesAsset: challenge.producesAsset,
       assetType: challenge.assetType,
+      contextTemplate,
       hints: challenge.hints,
       active: challenge.active,
     };
@@ -58,6 +66,7 @@ async function seed() {
           prerequisites: values.prerequisites,
           producesAsset: values.producesAsset,
           assetType: values.assetType,
+          contextTemplate: values.contextTemplate,
           hints: values.hints,
           active: values.active,
         },

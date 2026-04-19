@@ -11,6 +11,8 @@ import Timer from '@/components/workspace/Timer';
 import MarkdownEditor from '@/components/workspace/MarkdownEditor';
 import CodeEditor from '@/components/workspace/CodeEditor';
 import VisibleTestCases from '@/components/workspace/VisibleTestCases';
+import GuidedWorkspace from '@/components/workspace/GuidedWorkspace';
+import type { GuidedFlowConfig } from '@/lib/types';
 import {
   ArrowLeft, Send, ChevronDown, ChevronUp,
   Lightbulb, FileText, AlertCircle, Loader2,
@@ -154,6 +156,10 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
   // everything else keeps the markdown editor it's always had.
   const grader = seedChallenge?.rubric?.grader;
   const isCodeSandbox = grader?.type === 'code-sandbox';
+  // Guided-flow challenges replace the whole single-shot editor/submit UI
+  // with the multi-stage tutored loop.
+  const isGuided = seedChallenge?.flow === 'guided';
+  const guidedConfig = seedChallenge?.guidedConfig as GuidedFlowConfig | undefined;
   const entrypoint = isCodeSandbox
     ? ((grader!.config as { entrypoint?: string }).entrypoint ?? 'solve')
     : null;
@@ -188,7 +194,14 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Timer totalMinutes={timeMinutes} />
-          {isCodeSandbox ? (
+          {isGuided && attemptId && guidedConfig ? (
+            <GuidedWorkspace
+              attemptId={attemptId}
+              challengeId={id}
+              challengeTitle={title}
+              guidedConfig={guidedConfig}
+            />
+          ) : isCodeSandbox ? (
             <CodeEditor
               value={submission}
               onChange={setSubmission}
@@ -206,13 +219,16 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
             />
           )}
 
-          {submitError && (
+          {submitError && !isGuided && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {submitError}
             </div>
           )}
 
-          <div className="flex items-center justify-between">
+          {!isGuided && <div className="flex items-center justify-between">
+            {/* guided attempts use the per-stage Continue/Submit-for-review
+                buttons inside GuidedWorkspace — this single-shot submit bar is
+                only shown for single-shot challenges. */}
             <p className="text-xs text-gray-400">
               {submission.trim().split(/\s+/).filter(Boolean).length} words written
             </p>
@@ -253,7 +269,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
                 </button>
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">

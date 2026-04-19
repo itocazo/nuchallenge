@@ -4,6 +4,36 @@ export type AntiCheatTier = 'T0' | 'T1' | 'T2' | 'T3';
 export type AttemptStatus = 'in_progress' | 'submitted' | 'evaluating' | 'completed' | 'failed';
 export type ChallengeUserStatus = 'available' | 'in_progress' | 'completed' | 'locked';
 
+/**
+ * Guided-flow challenges walk the learner through a tutored loop:
+ * craft-prompt → critique-of-prompt → paste-raw-AI-response → self-critique →
+ * critique-of-critique → final-version → PM-style review. The stage order is
+ * fixed; each learner stage is followed by the corresponding tutor stage.
+ */
+export type GuidedStageKind =
+  | 'user-prompt'                // learner's prompt to their external LLM
+  | 'tutor-prompt-critique'      // AI: feedback on that prompt
+  | 'user-raw-response'          // learner pastes the raw LLM output
+  | 'user-critique'              // learner's take on what's wrong with that output
+  | 'tutor-critique-of-critique' // AI: how sharp was the critique?
+  | 'user-final'                 // learner's revised final answer
+  | 'tutor-final-review';        // AI: PM-style qualitative review + grading
+
+export interface GuidedStage {
+  kind: GuidedStageKind;
+  text: string;
+  at: string; // ISO timestamp
+  /** Only populated on the final tutor review — drives the attempt's score. */
+  scores?: { name: string; score: number; justification: string }[];
+}
+
+export interface GuidedFlowConfig {
+  /** Short text shown at the top explaining what the learner will do. */
+  briefRequest: string;
+  /** Optional reference answer the PM-reviewer can ground scoring against. */
+  referenceAnswer?: string;
+}
+
 export interface RubricCriterion {
   name: string;
   weight: number;
@@ -44,6 +74,17 @@ export interface Challenge {
   assetType: string | null;
   hints: { level: number; text: string }[];
   active: boolean;
+  /**
+   * Execution mode:
+   *  - 'single-shot' (default): one submission, one evaluation.
+   *  - 'guided': multi-stage tutored loop. The learner iterates through
+   *    `user-prompt → tutor-prompt-critique → user-raw-response → user-critique
+   *    → tutor-critique-of-critique → user-final → tutor-final-review`, with
+   *    the final tutor stage producing the score for the attempt.
+   */
+  flow?: 'single-shot' | 'guided';
+  /** Required when `flow === 'guided'`. */
+  guidedConfig?: GuidedFlowConfig;
 }
 
 export interface ChallengeWithStatus extends Challenge {

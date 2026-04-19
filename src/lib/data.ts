@@ -3,65 +3,58 @@ import { Challenge, User, Attempt, LeaderboardEntry } from './types';
 export const SEED_CHALLENGES: Challenge[] = [
   {
     id: 'CH-01',
-    title: 'Spot the Bad PRD — Smart Notifications',
-    description: 'An AI-drafted PRD for a smart notification system contains 5 planted problems. Find them all and submit your findings. Auto-graded by keyword-based fuzzy matching.',
-    instructions: '## Your Task\n\nBelow is a PRD draft an engineer pasted into Slack after asking an LLM to "write a quick PRD for smart notifications." It contains **exactly 5 planted problems** that would get flagged in a real PRD review at Nubank. Find them all and submit your 5 findings — one per line, as a bulleted/numbered list, or as a JSON array.\n\n### Feature Brief (the real requirements)\n\nNubank\'s mobile app sends an average of **12 push notifications per day per user**. User research shows **68% of users have disabled** non-critical notifications. The smart notification system should learn user preferences and prioritize alerts, reducing notification volume by **50%** while maintaining engagement on critical alerts (transactions, security).\n\nA good 1-page PRD for this feature must include:\n1. **Problem statement** grounded in the baseline numbers\n2. **At least 3 user stories** in proper `As a <role>, I want <action> so that <outcome>` format\n3. **2–3 measurable KPIs** (numeric targets, not feelings)\n4. **An explicit out-of-scope section** listing what is cut from v1\n\n### The AI-drafted PRD under review\n\n```markdown\n# Smart Notifications PRD\n\n## Problem\nNotifications are annoying. Users get too many. We should make it smarter\nand more personalized so users are happier.\n\n## Users\nAll 80 million Nubank users across Brazil, Mexico, and Colombia.\n\n## Success Metrics\n- Users feel happier about notifications\n- Better overall engagement\n- Reduced churn on the notifications feature\n\n## What we will build\n- A lightweight ML model that predicts per-notification priority\n- Real-time inference on every push event\n- A brand-new admin dashboard for the ops team\n- SMS and email unification with push\n- Migrate off AWS SNS to a custom in-house notification bus\n- Integration with the marketing automation platform for campaign pushes\n```\n\n### Submission format\n\nWrite 5 findings in plain prose. Each finding must mention **both** what is wrong AND what a correct version would look like — "the thing is wrong" alone will not match; "the thing is wrong because X, a correct version would Y" does. You can use any of these formats:\n\n**Bulleted list (easiest):**\n```\n- <first problem>: what is missing or wrong, and what a correct PRD would include.\n- <second problem>: …\n- <third problem>: …\n- <fourth problem>: …\n- <fifth problem>: …\n```\n\n**JSON array (if you prefer):**\n```json\n[\n  "<first problem explanation>",\n  "<second problem explanation>",\n  "<third problem explanation>",\n  "<fourth problem explanation>",\n  "<fifth problem explanation>"\n]\n```\n\n> The grader fuzzy-matches each of your entries against an answer key by keyword overlap. Order does not matter, and extra findings beyond the 5 planted ones are ignored.',
-    tags: ['AI Evaluation', 'Critical Thinking', 'Product Thinking', 'Writing & Documentation'],
+    title: 'Draft a Real PRD — Smart Notifications (Guided)',
+    description: 'Use an external LLM to draft a 1-page PRD for Nubank\'s smart notifications feature. The platform walks you through a tutored loop: craft your prompt → tutor critiques it → paste the raw LLM output → write your own critique of it → tutor critiques your critique → submit your final version → PM-style review grades the final. You must actually use an AI tool (ChatGPT / Claude / Gemini) for this — that is the point.',
+    instructions: '## Your Task\n\nThis challenge is a **guided multi-stage workflow**. You will produce a 1-page PRD for Nubank\'s "Smart Notifications" feature using an **external LLM of your choice** (ChatGPT, Claude.ai, Gemini, Le Chat — whatever you prefer). The platform does not run the LLM for you; you paste back what your tool produced so we can reason about it together.\n\n### Why this shape\n\nJunior-level AI use looks like: paste question → paste answer. That learns nothing. This challenge forces you to:\n1. **Think about your prompt first** (the tutor will critique it before you run it).\n2. **Critique the raw AI output yourself** (this is where the real skill lives).\n3. **Rewrite the deliverable** incorporating what you caught.\n\n### Feature Brief (use this as context in your prompt)\n\nNubank\'s mobile app sends an average of **12 push notifications per day per user**. User research shows **68% of users have disabled** non-critical notifications. The smart notification system should learn user preferences and prioritize alerts, reducing notification volume by **50%** while maintaining engagement on critical alerts (transactions, security).\n\n### What a good 1-page PRD for this feature must contain\n\n1. **Problem statement** grounded in the baseline numbers above (cite 12/day and 68%).\n2. **At least 3 user stories** in proper `As a <role>, I want <action> so that <outcome>` format.\n3. **2–3 measurable KPIs** — numeric targets, not feelings ("users feel happier" is NOT a metric).\n4. **An explicit out-of-scope section** listing what is cut from v1 (e.g. SMS/email unification, custom in-house notification bus).\n\n### The stages you will go through\n\n1. **Your prompt** — write the prompt you plan to paste into your external LLM. The tutor critiques your prompt (not the PRD yet).\n2. **Raw LLM output** — run your prompt in the external tool, paste the raw response back here. No edits.\n3. **Your critique** — write what you think is weak / wrong / missing in that raw output. Be specific.\n4. **Final PRD** — rewrite the PRD incorporating your own critique. **This is what gets graded by the PM-style review.** If your final is identical to the raw output, you will not score well.\n\n### How it\'s graded\n\nThe final PM review reads your **entire work-log** (prompt + raw output + your critique + final) and scores the FINAL PRD against the rubric. The reviewer explicitly penalizes finals that did not incorporate the learner\'s own stated critique.',
+    tags: ['AI Evaluation', 'Critical Thinking', 'Product Thinking', 'Writing & Documentation', 'Prompt Engineering'],
     difficulty: 'beginner',
-    timeMinutes: 25,
-    pointsBase: 120,
-    submissionFormat: 'List of 5 findings (bulleted, numbered, or JSON array)',
-    evaluationMethod: 'hybrid',
+    timeMinutes: 30,
+    pointsBase: 180,
+    submissionFormat: 'Guided flow: prompt → raw output → your critique → final PRD. Graded on the final.',
+    evaluationMethod: 'ai-judge',
+    flow: 'guided',
+    guidedConfig: {
+      briefRequest:
+        'A 1-page PRD for Nubank\'s Smart Notifications feature that: (1) opens with a problem statement grounded in the 12/day notifications and 68% opt-out baseline; (2) lists at least 3 user stories in As a <role>, I want <action> so that <outcome> format; (3) defines 2–3 measurable KPIs with numeric targets; (4) has an explicit out-of-scope section. Keep it under ~500 words.',
+      referenceAnswer:
+        '# Smart Notifications — PRD (v1)\n\n## Problem\nToday Nubank sends an average of 12 push notifications per day per user. 68% of users have already disabled non-critical notifications, which means we lose the channel even for important alerts (transactions, security). We need to cut noise without losing the signal.\n\n## Goals (v1)\nReduce average push volume by 50% (from ~12/day to ≤6/day) while holding open-rate on critical notifications ≥ today\'s baseline.\n\n## User Stories\n- As a customer, I want to receive fewer, more relevant push notifications, so that I stop muting the app.\n- As a customer, I want critical alerts (suspicious transaction, security) to always reach me, so that I trust the app to protect me.\n- As a CRM operator, I want to see which notification categories are being deprioritized and why, so that I can adjust campaign targeting.\n\n## Success Metrics (KPIs)\n- Average daily push volume per user ≤ 6 (from ~12).\n- Open-rate on security/transaction alerts ≥ current baseline (no regression).\n- % of users with non-critical notifications disabled drops from 68% → ≤ 50% within 90 days of launch.\n\n## Out of scope (v1)\n- SMS and email unification with push.\n- Migrating off AWS SNS to an in-house notification bus.\n- New admin dashboard for ops (use existing tooling).\n- Marketing automation integration for campaign pushes.\n\n## Risks\n- Ranking model de-prioritizes an alert the user actually wanted → mitigated by always surfacing the "security" + "transaction" tiers.\n- 50% volume reduction target is optimistic for v1 — we treat it as a 90-day goal, not a launch gate.',
+    },
     rubric: {
-      hybridWeights: { auto: 0.3, ai: 0.7 },
       criteria: [
-        { name: 'Problems found', weight: 60, description: 'How many of the 5 planted problems were identified (keyword coverage).' },
-        { name: 'Quality of critique', weight: 40, description: 'AI judge: does each finding actually reason about the problem and propose a fix, in the learner\'s own words? Findings that merely paraphrase or copy the prompt score low.' },
-      ],
-      grader: {
-        type: 'structured',
-        config: {
-          expectedShape: 'list',
-          matchMode: 'fuzzy',
-          partialCredit: true,
-          answerKey: [
-            {
-              label: 'Vague problem statement (ignores the 12/day + 68% baseline)',
-              keywords: ['problem', 'vague', '68', '12', 'baseline'],
-              minOverlap: 2,
-            },
-            {
-              label: 'No user stories in As-a / I-want / so-that format',
-              keywords: ['user stor', 'no user', 'format', 'as a'],
-              minOverlap: 2,
-            },
-            {
-              label: 'Unmeasurable metrics ("users feel happy")',
-              keywords: ['happy', 'measurable', 'metric', 'kpi', 'numeric'],
-              minOverlap: 2,
-            },
-            {
-              label: 'Scope creep (SMS / admin dashboard / SNS migration)',
-              keywords: ['scope', 'creep', 'sms', 'admin dashboard', 'sns'],
-              minOverlap: 2,
-            },
-            {
-              label: 'No explicit out-of-scope section',
-              keywords: ['out of scope', 'out-of-scope', 'boundar', 'explicit'],
-              minOverlap: 2,
-            },
-          ],
+        {
+          name: 'Problem grounded in baseline',
+          weight: 25,
+          description:
+            'Does the final PRD open with a problem statement that cites the 12/day and 68%-opt-out baseline numbers (not vague prose like "users are annoyed")?',
         },
-      },
+        {
+          name: 'User stories in INVEST-correct format',
+          weight: 25,
+          description:
+            'At least 3 user stories in proper `As a <role>, I want <action> so that <outcome>` format. Value is clear, stories are independent, not hard-coded to tech.',
+        },
+        {
+          name: 'Measurable KPIs',
+          weight: 25,
+          description:
+            'Two to three numeric success metrics with concrete targets. Hedging words like "better" or "happier" without numbers score low.',
+        },
+        {
+          name: 'Explicit out-of-scope + engagement with own critique',
+          weight: 25,
+          description:
+            'Has an explicit out-of-scope section (e.g. SMS unification, SNS migration, marketing automation). Crucially: the final version reflects changes the learner themselves named in their stage-3 critique. A final that copies the raw LLM output verbatim scores low here even if the other three criteria pass.',
+        },
+      ],
     },
     antiCheatTier: 'T0',
     prerequisites: [],
-    producesAsset: false,
-    assetType: null,
+    producesAsset: true,
+    assetType: 'document',
     hints: [
-      { level: 1, text: 'Cross-check the PRD\'s "Problem" and "Success Metrics" sections against the concrete numbers in the feature brief. Anything qualitative where the brief gives you numbers is a red flag.' },
-      { level: 2, text: 'Count the user stories in the draft, then count how many are in `As a <role>, I want <action> so that <outcome>` format.' },
-      { level: 3, text: 'The grader looks for keyword pairs — each finding should mention BOTH the wrong thing AND the fix. "Problem statement is vague — it ignores the 68% baseline from the brief" scores; just "problem is vague" does not.' },
+      { level: 1, text: 'A strong prompt specifies: the role (e.g. "senior PM at a Brazilian neobank"), the artifact shape (1-page PRD with named sections), the concrete numbers to ground in, and the format. Vague prompts → vague outputs.' },
+      { level: 2, text: 'When you critique the raw output, be SPECIFIC. "The metrics section is weak" is soft. "Success metric 3 says \'increased adoption\' without a number — should be a 90-day delta on the 68% opt-out baseline" is a useful critique.' },
+      { level: 3, text: 'Your final version should visibly show the edits. If your critique said "missing out-of-scope section", your final MUST add one. The PM reviewer checks for this alignment.' },
     ],
     active: true,
   },
