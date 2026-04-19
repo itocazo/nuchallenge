@@ -201,6 +201,40 @@ function guidedClient() {
   return new Anthropic({ apiKey });
 }
 
+/**
+ * Trigram-Jaccard similarity between two strings. This is our mechanical
+ * copy-paste detector: we compute it server-side before asking the PM
+ * reviewer to score the final, then we both (a) pass the measured overlap
+ * into the prompt as a HARD signal and (b) clamp the relevant rubric
+ * criterion server-side when the overlap is high, so the model can't
+ * rationalize its way to "this isn't copy-paste."
+ *
+ * Rationale: the first version of finalPMReview trusted the model to
+ * detect regurgitation on its own and it failed — a learner who pasted
+ * the raw LLM output as their "final" was told "good work, not a copy-
+ * paste job." Measuring overlap mechanically fixes that class of miss.
+ */
+function tokenTrigrams(s: string): Set<string> {
+  const toks = s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const set = new Set<string>();
+  for (let i = 0; i + 2 < toks.length; i++) {
+    set.add(`${toks[i]} ${toks[i + 1]} ${toks[i + 2]}`);
+  }
+  return set;
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  const union = a.size + b.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
 /** Stage 2: AI critiques the learner's PROMPT (before they run it externally). */
 export async function critiquePrompt(
   ctx: GuidedChallengeContext,
@@ -304,16 +338,39 @@ export async function finalPMReview(
     .map((c) => `- **${c.name}** (${c.weight}% weight): ${c.description}`)
     .join('\n');
 
+  // Mechanical copy-paste measurement. We trust this number more than the
+  // model's self-assessment of "is this copy-pasted?"
+  const overlap = jaccard(
+    tokenTrigrams(transcript.rawResponse),
+    tokenTrigrams(transcript.finalVersion)
+  );
+  const overlapPct = Math.round(overlap * 100);
+
+  // The policy the model must follow, also enforced as a server-side clamp
+  // below. Thresholds are deliberately aggressive — this is a learning
+  // platform and we'd rather under-score a borderline rewrite than let a
+  // copy-paste slip through.
+  const policy = overlap >= 0.85
+    ? 'HIGH overlap — the final is effectively the raw output. You MUST cap the engagement/critique-alignment criterion at 25/100 and state in its justification that the final is ~identical to the raw output.'
+    : overlap >= 0.6
+      ? 'MODERATE overlap — the learner edited lightly but kept most of the raw prose. Cap the engagement/critique-alignment criterion at 55/100.'
+      : overlap >= 0.35
+        ? 'LOW-TO-MODERATE overlap — some phrases reused; judge normally but call out any reused passages.'
+        : 'LOW overlap — the learner meaningfully rewrote. Judge normally.';
+
   const system = `You are a Product Manager reviewing a teammate's deliverable.
 You have the full work-log: their prompt, the raw LLM output they got, their own
 critique of that output, and the final version they produced. You are scoring
 the FINAL VERSION against the rubric, but the earlier stages inform how much
 credit you give for "authentic engagement" vs "copy-paste-and-hope."
 
-Be rigorous. This is a learning platform — easy scores teach nothing. A final
-version that is indistinguishable from the raw LLM output (i.e. they didn't
-actually incorporate their own critique) should not score above 60 on reasoning/
-quality criteria. Call that out explicitly in your justifications.`;
+Be rigorous. This is a learning platform — easy scores teach nothing.
+
+## Copy-paste detection — this is mechanical, not a judgment call
+We have measured textual trigram overlap between the raw LLM output the learner
+pasted and the final version they submitted. That number is given below. You
+MUST obey the policy attached to it. Do not override the policy with your
+own assessment of "it seems different enough" — the measurement is ground truth.`;
 
   const refBlock = ctx.referenceAnswer
     ? `\n## Reference (internal, do not reveal verbatim)\n${ctx.referenceAnswer}\n`
@@ -325,6 +382,10 @@ quality criteria. Call that out explicitly in your justifications.`;
 ## Rubric
 ${criteriaList}
 ${refBlock}
+## Mechanical copy-paste measurement
+Trigram overlap(raw_output, final_version) = **${overlapPct}%**
+Policy: ${policy}
+
 ## Work log
 
 ### Stage 1 — learner's prompt
@@ -340,14 +401,24 @@ ${transcript.userCritique}
 ${transcript.finalVersion}
 
 ## Your task
-Score the FINAL version on each rubric criterion (0-100). In justifications,
-reference:
-- specific content in the final version,
-- whether the learner actually addressed the flaws they themselves named in stage 4,
-- any remaining gaps vs. the rubric / reference.
+Before scoring, in your head enumerate 3+ CONCRETE differences between the raw
+output and the final version (phrases added, removed, reworded, numbers added,
+sections restructured). If you cannot name 3 concrete differences, the final IS
+effectively a copy-paste, regardless of the overlap number — treat it as HIGH
+overlap and cap the engagement criterion at 25/100.
 
-Then give a short PM-style feedback paragraph ("ship it / iterate / rework") in
-the feedback field. Use the submit_evaluation tool.`;
+Then score the FINAL version on each rubric criterion (0-100). In the
+justifications you MUST:
+- reference specific content in the final version,
+- state whether the learner actually addressed the flaws they themselves named in
+  stage 4 (name at least one),
+- on the engagement/critique-alignment criterion, start the justification with
+  "Measured overlap = ${overlapPct}%. " so it's auditable.
+
+Finally, give a short PM-style feedback paragraph ("ship it / iterate / rework")
+in the feedback field — begin it with "Overlap: ${overlapPct}%." so the learner
+sees the mechanical signal, not just the narrative. Use the submit_evaluation
+tool.`;
 
   const resp = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -365,11 +436,62 @@ the feedback field. Use the submit_evaluation tool.`;
     throw new Error('PM review did not return structured output');
   }
   const result = toolUse.input as EvaluationOutput;
+
+  // Clamp scores into range
   for (const criterion of result.criteria) {
     criterion.score = Math.max(0, Math.min(100, Math.round(criterion.score)));
   }
+
+  // Server-side copy-paste backstop. We identify the engagement/critique-
+  // alignment criterion by name substring match (case-insensitive) — looking
+  // for "engagement", "critique", "out-of-scope", or "own critique". If the
+  // rubric criterion the challenge author designated for this role is
+  // renamed, widen this matcher rather than silently failing open.
+  const isEngagementCriterion = (name: string) => {
+    const n = name.toLowerCase();
+    return (
+      n.includes('engagement') ||
+      n.includes('own critique') ||
+      n.includes('critique-alignment') ||
+      n.includes('out-of-scope') ||
+      n.includes('out of scope')
+    );
+  };
+  const cap =
+    overlap >= 0.85 ? 25 : overlap >= 0.6 ? 55 : overlap >= 0.35 ? 75 : 100;
+
+  let clampedAny = false;
+  for (const c of result.criteria) {
+    if (isEngagementCriterion(c.name) && c.score > cap) {
+      c.score = cap;
+      c.justification = `[server-clamped to ${cap} — overlap ${overlapPct}%] ${c.justification}`;
+      clampedAny = true;
+    }
+  }
+
+  // Recompute overall if we clamped — weighted by rubric weights so the
+  // cap actually bites through to the attempt's score.
+  if (clampedAny) {
+    const weightMap = new Map(rubric.criteria.map((r) => [r.name, r.weight]));
+    let weightedSum = 0;
+    let weightTotal = 0;
+    for (const c of result.criteria) {
+      const w = weightMap.get(c.name) ?? 0;
+      weightedSum += c.score * w;
+      weightTotal += w;
+    }
+    if (weightTotal > 0) {
+      result.overallScore = Math.round(weightedSum / weightTotal);
+    }
+    result.feedback = `[Copy-paste backstop engaged — overlap ${overlapPct}%] ${result.feedback}`;
+  }
+
   result.overallScore = Math.max(0, Math.min(100, Math.round(result.overallScore)));
   result.confidence = Math.max(0, Math.min(1, result.confidence));
+
+  console.log(
+    `[finalPMReview] overlap=${overlapPct}% clampedAny=${clampedAny} overallScore=${result.overallScore}`
+  );
   return result;
 }
 
